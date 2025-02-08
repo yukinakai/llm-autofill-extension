@@ -2,6 +2,7 @@
   "name": "llm-autofill-extension",
   "version": "0.1.0",
   "description": "Chrome extension for intelligent form autofill using LLMs",
+  "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",

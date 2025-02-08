@@ -1,6 +1,9 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import { resolve } from 'path';
+import { fileURLToPath } from 'url';
+
+const __dirname = fileURLToPath(new URL('.', import.meta.url));
 
 export default defineConfig({
   plugins: [react()],
@@ -20,6 +23,7 @@ export default defineConfig({
         content: resolve(__dirname, 'src/content/index.ts'),
       },
       output: {
+        dir: 'dist',
         entryFileNames: 'src/[name]/index.js',
         chunkFileNames: 'assets/[name].[hash].js',
         assetFileNames: 'assets/[name].[hash][extname]',
