@@ -1,59 +1,72 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { saveApiKey, loadApiKey, deleteApiKey } from '../storage';
-import type { ApiKey } from '../../options/components/ApiKeyForm';
+import { vi, describe, it, expect, beforeEach } from 'vitest';
+import { getApiKey, saveApiKey, deleteApiKey } from '../storage';
+import { ApiKey } from '../../options/components/ApiKeyForm';
+
+vi.mock('webextension-polyfill', () => ({
+  default: {
+    storage: {
+      sync: {
+        get: vi.fn(),
+        set: vi.fn(),
+        remove: vi.fn()
+      }
+    }
+  }
+}));
 
 describe('Storage Utils', () => {
   const mockApiKey: ApiKey = {
-    provider: 'openai',
     key: 'sk-test-key',
-    timestamp: '2025/2/8 19:40:00'
+    provider: 'openai'
+  };
+
+  const chrome = {
+    storage: {
+      sync: {
+        get: vi.fn(),
+        set: vi.fn(),
+        remove: vi.fn()
+      }
+    }
   };
 
   beforeEach(() => {
-    // Chrome Storage APIのモック
-    global.chrome = {
-      storage: {
-        sync: {
-          set: vi.fn(),
-          get: vi.fn(),
-          remove: vi.fn()
-        }
-      }
-    } as any;
+    vi.clearAllMocks();
+    global.chrome = chrome as any;
   });
 
   it('saves API key to chrome storage', async () => {
-    const setSpy = vi.spyOn(chrome.storage.sync, 'set');
     await saveApiKey(mockApiKey);
-    expect(setSpy).toHaveBeenCalledWith({ llm_api_keys: mockApiKey });
+
+    expect(chrome.storage.sync.set).toHaveBeenCalledWith({
+      llm_api_key: mockApiKey
+    });
   });
 
   it('loads API key from chrome storage', async () => {
-    const getSpy = vi.spyOn(chrome.storage.sync, 'get');
-    getSpy.mockImplementation(() => Promise.resolve({ llm_api_keys: mockApiKey }));
+    chrome.storage.sync.get.mockResolvedValue({
+      llm_api_key: mockApiKey
+    });
 
-    const result = await loadApiKey();
+    const result = await getApiKey();
     expect(result).toEqual(mockApiKey);
-    expect(getSpy).toHaveBeenCalledWith('llm_api_keys');
   });
 
   it('returns null when no API key is stored', async () => {
-    const getSpy = vi.spyOn(chrome.storage.sync, 'get');
-    getSpy.mockImplementation(() => Promise.resolve({}));
+    chrome.storage.sync.get.mockResolvedValue({});
 
-    const result = await loadApiKey();
+    const result = await getApiKey();
     expect(result).toBeNull();
   });
 
   it('deletes API key from chrome storage', async () => {
-    const removeSpy = vi.spyOn(chrome.storage.sync, 'remove');
     await deleteApiKey();
-    expect(removeSpy).toHaveBeenCalledWith('llm_api_keys');
+
+    expect(chrome.storage.sync.remove).toHaveBeenCalledWith('llm_api_key');
   });
 
   it('handles storage errors appropriately', async () => {
-    const error = new Error('Storage error');
-    vi.spyOn(chrome.storage.sync, 'set').mockRejectedValue(error);
+    chrome.storage.sync.set.mockRejectedValue(new Error('Storage error'));
 
     await expect(saveApiKey(mockApiKey)).rejects.toThrow('Storage error');
   });

@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LLMオートフィル機能デモ</title>
+    <style>
+        body {
+            font-family: 'Helvetica Neue', Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background-color: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            color: #555;
+            font-weight: bold;
+        }
+        input {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 16px;
+        }
+        input:focus {
+            outline: none;
+            border-color: #4a90e2;
+            box-shadow: 0 0 0 2px rgba(74,144,226,0.2);
+        }
+        .description {
+            background-color: #f8f9fa;
+            padding: 15px;
+            border-radius: 4px;
+            margin-bottom: 30px;
+        }
+        .description h2 {
+            margin-top: 0;
+            color: #333;
+        }
+        .description p {
+            margin-bottom: 0;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>LLMオートフィル機能デモ</h1>
+        
+        <div class="description">
+            <h2>このデモについて</h2>
+            <p>このページは、LLMを使用したフォームの自動入力機能をテストするためのデモです。
+               様々な命名パターンのフィールドに対して、プロフィール情報から適切な値を選択して自動入力します。</p>
+        </div>
+
+        <form id="demoForm">
+            <div class="form-group">
+                <label for="fullName">氏名</label>
+                <input type="text" id="fullName" name="fullName" placeholder="例：山田太郎">
+            </div>
+
+            <div class="form-group">
+                <label for="email_address">メールアドレス</label>
+                <input type="email" id="email_address" name="email_address" placeholder="例：example@example.com">
+            </div>
+
+            <div class="form-group">
+                <label for="phone">電話番号</label>
+                <input type="tel" id="phone" name="phone" placeholder="例：090-1234-5678">
+            </div>
+
+            <div class="form-group">
+                <label for="postalCode">郵便番号</label>
+                <input type="text" id="postalCode" name="postalCode" placeholder="例：123-4567">
+            </div>
+
+            <div class="form-group">
+                <label for="address">住所</label>
+                <input type="text" id="address" name="address" placeholder="例：東京都渋谷区...">
+            </div>
+
+            <div class="form-group">
+                <label for="company">会社名</label>
+                <input type="text" id="company" name="company" placeholder="例：株式会社サンプル">
+            </div>
+
+            <div class="form-group">
+                <label for="occupation">職業</label>
+                <input type="text" id="occupation" name="occupation" placeholder="例：エンジニア">
+            </div>
+        </form>
+    </div>
+</body>
+</html>

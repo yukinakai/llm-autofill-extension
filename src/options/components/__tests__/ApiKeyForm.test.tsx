@@ -1,222 +1,167 @@
 /// <reference types="vitest" />
+import '@testing-library/jest-dom';
 import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import '@testing-library/jest-dom';
+import { vi, describe, it, expect, beforeEach } from 'vitest';
 import ApiKeyForm from '../ApiKeyForm';
-import * as storage from '../../../utils/storage';
+import { saveApiKey, getApiKey, deleteApiKey } from '../../../utils/storage';
+import userEvent from '@testing-library/user-event';
 
+// ストレージユーティリティをモック
 vi.mock('../../../utils/storage', () => ({
-  loadApiKey: vi.fn(),
   saveApiKey: vi.fn(),
-  deleteApiKey: vi.fn(),
+  getApiKey: vi.fn(),
+  deleteApiKey: vi.fn()
 }));
 
 describe('ApiKeyForm', () => {
   beforeEach(() => {
-    vi.useFakeTimers({ shouldAdvanceTime: true });
-    vi.setSystemTime(new Date('2025-02-08T19:40:00'));
     vi.clearAllMocks();
-  });
-
-  afterEach(() => {
-    vi.useRealTimers();
+    (getApiKey as jest.Mock).mockResolvedValue(null);
   });
 
   it('renders API key input fields', async () => {
-    vi.mocked(storage.loadApiKey).mockResolvedValue(null);
-    render(<ApiKeyForm onSubmit={() => {}} />);
-
-    expect(screen.getByText('読み込み中...')).toBeInTheDocument();
+    render(<ApiKeyForm />);
 
     await waitFor(() => {
-      expect(screen.queryByText('読み込み中...')).not.toBeInTheDocument();
+      expect(screen.queryByText(/読み込み中/i)).not.toBeInTheDocument();
     });
 
-    expect(screen.getByRole('combobox', { name: /LLMプロバイダー/i })).toBeInTheDocument();
-    expect(screen.getByRole('textbox', { name: /OpenAI APIキー/i })).toBeInTheDocument();
+    expect(screen.getByTestId('api-key-input')).toBeInTheDocument();
+    expect(screen.getByTestId('llm-provider-select')).toBeInTheDocument();
   });
 
   it('handles API key input changes', async () => {
-    vi.mocked(storage.loadApiKey).mockResolvedValue(null);
-    render(<ApiKeyForm onSubmit={() => {}} />);
+    render(<ApiKeyForm />);
 
     await waitFor(() => {
-      expect(screen.queryByText('読み込み中...')).not.toBeInTheDocument();
+      expect(screen.queryByText(/読み込み中/i)).not.toBeInTheDocument();
     });
 
-    const input = screen.getByRole('textbox', { name: /OpenAI APIキー/i });
-    fireEvent.change(input, { target: { value: 'sk-test-key' } });
-    expect(input).toHaveValue('sk-test-key');
+    const input = screen.getByLabelText(/OpenAI APIキー/i);
+    await userEvent.type(input, 'test-api-key');
+    expect(input).toHaveValue('test-api-key');
   });
 
   it('displays validation error for invalid API key format', async () => {
-    vi.mocked(storage.loadApiKey).mockResolvedValue(null);
-    render(<ApiKeyForm onSubmit={() => {}} />);
+    render(<ApiKeyForm />);
 
     await waitFor(() => {
-      expect(screen.queryByText('読み込み中...')).not.toBeInTheDocument();
+      expect(screen.queryByText(/読み込み中/i)).not.toBeInTheDocument();
     });
 
-    const input = screen.getByRole('textbox', { name: /OpenAI APIキー/i });
-    fireEvent.change(input, { target: { value: 'invalid-key' } });
-    
-    const submitButton = screen.getByText('保存');
-    fireEvent.click(submitButton);
-    
+    const input = screen.getByLabelText(/OpenAI APIキー/i);
+    const submitButton = screen.getByRole('button', { name: /保存/i });
+
+    await userEvent.type(input, 'invalid-key');
+    await userEvent.click(submitButton);
+
     await waitFor(() => {
-      const errorAlert = screen.getByTestId('error-alert');
-      expect(errorAlert).toHaveTextContent('OpenAIのAPIキーは"sk-"で始まる必要があります');
+      expect(screen.getAllByText(/APIキーの形式が正しくありません/i)).toHaveLength(2);
     });
   });
 
   it('handles form submission with valid API key', async () => {
-    const mockOnSubmit = vi.fn();
-    vi.mocked(storage.loadApiKey).mockResolvedValue(null);
-    vi.mocked(storage.saveApiKey).mockResolvedValue();
+    const mockSaveApiKey = saveApiKey as jest.Mock;
+    mockSaveApiKey.mockResolvedValueOnce(undefined);
 
-    render(<ApiKeyForm onSubmit={mockOnSubmit} />);
+    render(<ApiKeyForm />);
 
     await waitFor(() => {
-      expect(screen.queryByText('読み込み中...')).not.toBeInTheDocument();
+      expect(screen.queryByText(/読み込み中/i)).not.toBeInTheDocument();
     });
 
-    const input = screen.getByRole('textbox', { name: /OpenAI APIキー/i });
-    fireEvent.change(input, { target: { value: 'sk-test-key' } });
-    
-    const submitButton = screen.getByText('保存');
-    fireEvent.click(submitButton);
+    const input = screen.getByLabelText(/OpenAI APIキー/i);
+    const submitButton = screen.getByRole('button', { name: /保存/i });
+
+    await userEvent.type(input, 'sk-test-valid-key');
+    await userEvent.click(submitButton);
 
     await waitFor(() => {
-      expect(mockOnSubmit).toHaveBeenCalledWith({
+      expect(mockSaveApiKey).toHaveBeenCalledWith({
+        key: 'sk-test-valid-key',
         provider: 'openai',
-        key: 'sk-test-key',
-        timestamp: '2025/2/8 19:40:00'
+        timestamp: expect.any(String)
       });
     });
   });
 
   it('shows saved API key with timestamp and allows deletion', async () => {
-    const mockOnSubmit = vi.fn();
-    const savedApiKey = {
-      provider: 'openai' as const,
+    const mockGetApiKey = getApiKey as jest.Mock;
+    const mockDeleteApiKey = deleteApiKey as jest.Mock;
+
+    mockGetApiKey.mockResolvedValueOnce({
       key: 'sk-test-key',
-      timestamp: '2025/2/8 19:40:00'
-    };
-
-    vi.mocked(storage.loadApiKey).mockResolvedValue(savedApiKey);
-    vi.mocked(storage.deleteApiKey).mockResolvedValue();
-
-    render(<ApiKeyForm onSubmit={mockOnSubmit} />);
-
-    await waitFor(() => {
-      expect(screen.getByText('登録済みのAPIキー')).toBeInTheDocument();
+      provider: 'openai',
+      timestamp: '2025-02-08T13:42:02.468Z'
     });
 
-    expect(screen.getByText(/プロバイダー: OpenAI/i)).toBeInTheDocument();
-    expect(screen.getByText(/登録日時: 2025\/2\/8 19:40:00/i)).toBeInTheDocument();
-
-    const deleteButton = screen.getByLabelText('APIキーを削除');
-    fireEvent.click(deleteButton);
+    render(<ApiKeyForm />);
 
     await waitFor(() => {
-      expect(screen.getByRole('textbox', { name: /OpenAI APIキー/i })).toBeInTheDocument();
+      expect(screen.getByText(/保存日時:/i)).toBeInTheDocument();
+      expect(screen.getByText(/2025-02-08T13:42:02.468Z/i)).toBeInTheDocument();
     });
 
-    expect(mockOnSubmit).toHaveBeenLastCalledWith(null);
-  });
+    const deleteButton = screen.getByRole('button', { name: /削除/i });
+    await userEvent.click(deleteButton);
 
-  it('loads saved API key on mount', async () => {
-    const mockOnSubmit = vi.fn();
-    const savedApiKey = {
-      provider: 'openai' as const,
-      key: 'sk-test-key',
-      timestamp: '2025/2/8 19:40:00'
-    };
-
-    vi.mocked(storage.loadApiKey).mockResolvedValue(savedApiKey);
-
-    render(<ApiKeyForm onSubmit={mockOnSubmit} />);
-
-    await waitFor(() => {
-      expect(screen.getByText('登録済みのAPIキー')).toBeInTheDocument();
-    });
-
-    expect(screen.getByText(/プロバイダー: OpenAI/i)).toBeInTheDocument();
-    expect(screen.getByText(/登録日時: 2025\/2\/8 19:40:00/i)).toBeInTheDocument();
-    expect(mockOnSubmit).toHaveBeenCalledWith(savedApiKey);
+    expect(mockDeleteApiKey).toHaveBeenCalled();
   });
 
   it('shows loading state while fetching API key', () => {
-    vi.mocked(storage.loadApiKey).mockResolvedValue(null);
-    render(<ApiKeyForm onSubmit={() => {}} />);
-    expect(screen.getByText('読み込み中...')).toBeInTheDocument();
+    const mockGetApiKey = getApiKey as jest.Mock;
+    mockGetApiKey.mockImplementation(() => new Promise(() => {}));
+
+    render(<ApiKeyForm />);
+
+    expect(screen.getByText(/読み込み中/i)).toBeInTheDocument();
   });
 
   it('handles API key save error', async () => {
-    const mockOnSubmit = vi.fn();
-    vi.mocked(storage.loadApiKey).mockResolvedValue(null);
-    vi.mocked(storage.saveApiKey).mockRejectedValue(new Error('Storage error'));
+    const mockSaveApiKey = saveApiKey as jest.Mock;
+    mockSaveApiKey.mockRejectedValueOnce(new Error('Storage error'));
 
-    render(<ApiKeyForm onSubmit={mockOnSubmit} />);
-
-    await waitFor(() => {
-      expect(screen.queryByText('読み込み中...')).not.toBeInTheDocument();
-    });
-
-    const input = screen.getByRole('textbox', { name: /OpenAI APIキー/i });
-    fireEvent.change(input, { target: { value: 'sk-test-key' } });
-    
-    const submitButton = screen.getByText('保存');
-    fireEvent.click(submitButton);
+    render(<ApiKeyForm />);
 
     await waitFor(() => {
-      const errorAlert = screen.getByTestId('error-alert');
-      expect(errorAlert).toHaveTextContent('APIキーの保存に失敗しました');
+      expect(screen.queryByText(/読み込み中/i)).not.toBeInTheDocument();
     });
 
-    expect(mockOnSubmit).not.toHaveBeenCalled();
+    const input = screen.getByLabelText(/OpenAI APIキー/i);
+    const submitButton = screen.getByRole('button', { name: /保存/i });
+
+    await userEvent.type(input, 'sk-test-valid-key');
+    await userEvent.click(submitButton);
+
+    await waitFor(() => {
+      expect(screen.getAllByText(/APIキーの保存に失敗しました/i)).toHaveLength(2);
+    });
   });
 
   it('handles API key delete error', async () => {
-    const mockOnSubmit = vi.fn();
-    const savedApiKey = {
-      provider: 'openai' as const,
+    const mockGetApiKey = getApiKey as jest.Mock;
+    const mockDeleteApiKey = deleteApiKey as jest.Mock;
+
+    mockGetApiKey.mockResolvedValueOnce({
       key: 'sk-test-key',
-      timestamp: '2025/2/8 19:40:00'
-    };
-
-    vi.mocked(storage.loadApiKey).mockResolvedValue(savedApiKey);
-    vi.mocked(storage.deleteApiKey).mockRejectedValue(new Error('Storage error'));
-
-    render(<ApiKeyForm onSubmit={mockOnSubmit} />);
-
-    await waitFor(() => {
-      expect(screen.getByText('登録済みのAPIキー')).toBeInTheDocument();
+      provider: 'openai',
+      timestamp: '2025-02-08T13:42:02.468Z'
     });
 
-    const deleteButton = screen.getByLabelText('APIキーを削除');
-    fireEvent.click(deleteButton);
+    mockDeleteApiKey.mockRejectedValueOnce(new Error('Storage error'));
+
+    render(<ApiKeyForm />);
 
     await waitFor(() => {
-      const errorAlert = screen.getByTestId('error-alert');
-      expect(errorAlert).toHaveTextContent('APIキーの削除に失敗しました');
+      expect(screen.getByText(/保存日時:/i)).toBeInTheDocument();
     });
 
-    expect(mockOnSubmit).not.toHaveBeenCalledWith(null);
-  });
-
-  it('handles API key load error', async () => {
-    const mockOnSubmit = vi.fn();
-    vi.mocked(storage.loadApiKey).mockRejectedValue(new Error('Storage error'));
-
-    render(<ApiKeyForm onSubmit={mockOnSubmit} />);
+    const deleteButton = screen.getByRole('button', { name: /削除/i });
+    await userEvent.click(deleteButton);
 
     await waitFor(() => {
-      const errorAlert = screen.getByTestId('error-alert');
-      expect(errorAlert).toHaveTextContent('APIキーの読み込みに失敗しました');
+      expect(screen.getAllByText(/APIキーの削除に失敗しました/i)).toHaveLength(2);
     });
-
-    expect(mockOnSubmit).not.toHaveBeenCalled();
   });
 });

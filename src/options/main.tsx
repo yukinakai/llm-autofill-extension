@@ -3,7 +3,7 @@ import * as ReactDOM from 'react-dom/client';
 import './index.css';
 import SettingsLayout from './components/SettingsLayout';
 import ProfileRegistration from './components/ProfileRegistration';
-import ApiKeyForm from './components/ApiKeyForm';
+import ApiKeyForm, { ApiKey } from './components/ApiKeyForm';
 
 const App = () => {
   const [currentPage, setCurrentPage] = useState<'profile' | 'apiKey'>('profile');
@@ -22,8 +22,8 @@ const App = () => {
           {currentPage === 'apiKey' && (
             <section>
               <h2 className="text-xl font-semibold mb-4">APIキー設定</h2>
-              <ApiKeyForm onSubmit={(apiKeys) => {
-                console.log('APIキーが更新されました:', apiKeys);
+              <ApiKeyForm onSubmit={(apiKey: ApiKey) => {
+                console.log('APIキーが更新されました:', apiKey);
                 // TODO: APIキーの保存処理を実装
               }} />
             </section>
