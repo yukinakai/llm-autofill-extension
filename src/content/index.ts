@@ -115,27 +115,48 @@ ${field.label ? `ラベル: ${field.label}` : ''}
       }
 
       try {
-        const response = await fetch('https://api.claude.ai/v1/messages', {
+        console.log('APIリクエストを送信します:', {
+          provider: this.provider,
+          prompt: prompt
+        });
+
+        const response = await fetch('https://api.anthropic.com/v1/messages', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
             'x-api-key': this.apiKey,
-            'claude-version': '2023-06-01'
+            'anthropic-version': '2023-06-01'
           },
           body: JSON.stringify({
-            model: 'claude',
+            model: 'claude-3-haiku-20240307',
             max_tokens: 1000,
             messages: [{ role: 'user', content: prompt }]
           })
         });
 
         if (!response.ok) {
-          throw new Error(`API request failed: ${response.statusText}`);
+          const errorText = await response.text();
+          console.error('APIレスポンスエラー:', {
+            status: response.status,
+            statusText: response.statusText,
+            error: errorText
+          });
+          throw new Error(`API request failed: ${response.status} ${response.statusText}\n${errorText}`);
         }
 
-        return (await response.json()).content;
+        const data = await response.json();
+        console.log('APIレスポンス:', data);
+
+        if (!data.content) {
+          throw new Error('Invalid API response: content is missing');
+        }
+
+        return data.content;
       } catch (error) {
         console.error('API呼び出しに失敗しました:', error);
+        if (error instanceof Error) {
+          throw new Error(`API call failed: ${error.message}`);
+        }
         throw error;
       }
     }
