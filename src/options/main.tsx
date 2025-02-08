@@ -6,7 +6,7 @@ import ProfileRegistration from './components/ProfileRegistration';
 import ApiKeyForm from './components/ApiKeyForm';
 
 const App = () => {
-  const [currentPage, setCurrentPage] = useState<'profile' | 'apiKey'>('apiKey');
+  const [currentPage, setCurrentPage] = useState<'profile' | 'apiKey'>('profile');
 
   return (
     <div className="min-h-screen bg-gray-50">
