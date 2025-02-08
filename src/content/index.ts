@@ -1,5 +1,7 @@
 /// <reference types="chrome"/>
 
+export {};
+
 declare global {
   interface Window {
     detectForms: () => { name: string; type: string; label?: string }[];
@@ -12,6 +14,7 @@ declare global {
     };
     getApiKey: () => Promise<{ key: string; type: string } | null>;
     getProfile: () => Promise<Record<string, string> | null>;
+    autofillForms: () => Promise<void>;
   }
 }
 
@@ -100,46 +103,12 @@ declare global {
 
   // LLMサービス
   class LLMService {
-    private _apiKey: string;
-    private _provider: string;
+    private apiKey: string;
+    private provider: string;
 
     constructor(apiKey: string, provider: string) {
-      this._apiKey = apiKey;
-      this._provider = provider;
-      console.log('LLMサービスを初期化:', this._provider);
-    }
-
-    private async callAnthropicAPI(prompt: string): Promise<string> {
-      try {
-        const response = await fetch('https://api.anthropic.com/v1/messages', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'x-api-key': this._apiKey,
-            'anthropic-version': '2023-06-01'
-          },
-          body: JSON.stringify({
-            model: 'claude-3-opus-20240229',
-            max_tokens: 1024,
-            messages: [
-              {
-                role: 'user',
-                content: prompt
-              }
-            ]
-          })
-        });
-
-        if (!response.ok) {
-          throw new Error(`API error: ${response.status}`);
-        }
-
-        const data = await response.json();
-        return data.content[0].text;
-      } catch (error) {
-        console.error('API呼び出しに失敗しました:', error);
-        throw error;
-      }
+      this.apiKey = apiKey;
+      this.provider = provider;
     }
 
     async matchFieldWithProfile(
@@ -147,43 +116,53 @@ declare global {
       profile: Record<string, string>
     ): Promise<string> {
       try {
-        // プロフィールのキーと値のペアを文字列に変換
-        const profileStr = Object.entries(profile)
-          .map(([key, value]) => `${key}: ${value}`)
-          .join('\n');
+        const prompt = `フィールド名: ${field.name}
+タイプ: ${field.type}
+${field.label ? `ラベル: ${field.label}` : ''}
+プロフィール: ${JSON.stringify(profile, null, 2)}
 
-        // プロンプトを構築
-        const prompt = `
-フォームフィールドとプロフィール情報を照合してください。
+上記のフォームフィールドに対して、プロフィールから最適な値を選択してください。`;
 
-フォームフィールド:
-- 名前: ${field.name}
-- タイプ: ${field.type}
-- ラベル: ${field.label || '不明'}
-
-プロフィール情報:
-${profileStr}
-
-フォームフィールドに最も適切なプロフィール情報の値を選んでください。
-プロフィール情報に適切な値が見つからない場合は空文字を返してください。
-値のみを返してください。説明は不要です。`;
-
-        // APIを呼び出してマッチング
-        const result = await this.callAnthropicAPI(prompt);
-        return result.trim();
+        const response = await this.callAnthropicAPI(prompt);
+        return response.trim();
       } catch (error) {
         console.error('フィールドのマッチングに失敗しました:', error);
-        return '';
+        throw error;
+      }
+    }
+
+    async callAnthropicAPI(prompt: string): Promise<string> {
+      if (this.provider !== 'anthropic') {
+        throw new Error('Unsupported LLM provider');
+      }
+
+      try {
+        const response = await fetch('https://api.anthropic.com/v1/messages', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-api-key': this.apiKey,
+            'anthropic-version': '2023-06-01'
+          },
+          body: JSON.stringify({
+            model: 'claude-2',
+            max_tokens: 1000,
+            messages: [{ role: 'user', content: prompt }]
+          })
+        });
+
+        if (!response.ok) {
+          throw new Error(`API request failed: ${response.statusText}`);
+        }
+
+        const data = await response.json();
+        return data.content;
+      } catch (error) {
+        console.error('API呼び出しに失敗しました:', error);
+        throw error;
       }
     }
   }
-
-  // グローバルオブジェクトに関数を追加
-  window.detectForms = detectForms;
-  window.findLabel = findLabel;
-  window.LLMService = LLMService;
-  window.getApiKey = getApiKey;
-  window.getProfile = getProfile;
 
   // オートフィル機能の実装
   async function autofillForms() {
@@ -208,18 +187,31 @@ ${profileStr}
       const fields = detectForms();
       console.log('検出されたフィールド:', fields);
 
+      if (fields.length === 0) {
+        console.log('入力可能なフォームフィールドが見つかりませんでした');
+        return;
+      }
+
       // LLMサービスを初期化
       const llmService = new LLMService(apiKeyData.key, apiKeyData.type);
 
-      // 各フィールドに対して自動入力を実行
+      // 各フィールドに対してマッチング処理を実行
       for (const field of fields) {
-        const value = await llmService.matchFieldWithProfile(field, profile);
-        if (value) {
-          const input = document.querySelector(`input[name="${field.name}"], input[id="${field.name}"]`) as HTMLInputElement | null;
-          if (input) {
-            input.value = value;
-            console.log(`フィールド ${field.name} に ${value} を入力しました`);
+        try {
+          const value = await llmService.matchFieldWithProfile(field, profile);
+          if (value) {
+            // フィールドを特定して値を設定
+            const input = document.querySelector(`input[name="${field.name}"]`) as HTMLInputElement;
+            if (input) {
+              input.value = value;
+              // 入力イベントを発火させて、フォームのバリデーションなどを実行
+              const event = new Event('input', { bubbles: true });
+              input.dispatchEvent(event);
+              console.log(`フィールド "${field.name}" に "${value}" を設定しました`);
+            }
           }
+        } catch (error) {
+          console.error(`フィールド "${field.name}" の自動入力に失敗しました:`, error);
         }
       }
 
@@ -228,6 +220,14 @@ ${profileStr}
       console.error('フォームの自動入力中にエラーが発生しました:', error);
     }
   }
+
+  // グローバルオブジェクトに関数を追加
+  window.detectForms = detectForms;
+  window.findLabel = findLabel;
+  window.LLMService = LLMService;
+  window.getApiKey = getApiKey;
+  window.getProfile = getProfile;
+  window.autofillForms = autofillForms;
 
   // メッセージリスナーを設定
   console.log('Content script loaded');

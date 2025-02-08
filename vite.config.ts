@@ -61,7 +61,26 @@ const copyAssets = () => {
 
 /// <reference types="vitest" />
 
-export default defineConfig({
+// コンテンツスクリプト用の設定
+const contentScriptConfig = defineConfig({
+  build: {
+    outDir: 'dist',
+    lib: {
+      entry: resolve(__dirname, 'src/content/index.ts'),
+      name: 'content',
+      formats: ['iife'],
+      fileName: () => 'content.js'
+    },
+    rollupOptions: {
+      output: {
+        extend: true
+      }
+    }
+  }
+});
+
+// メインの設定
+const mainConfig = defineConfig({
   plugins: [react(), moveHtmlFiles(), copyAssets()],
   resolve: {
     alias: {
@@ -70,25 +89,18 @@ export default defineConfig({
   },
   build: {
     outDir: 'dist',
-    emptyOutDir: true,
+    emptyOutDir: false,
     rollupOptions: {
       input: {
         'popup/index': resolve(__dirname, 'src/popup/index.html'),
         'options/index': resolve(__dirname, 'src/options/index.html'),
         'background/index': resolve(__dirname, 'src/background/index.ts'),
-        'content/index': resolve(__dirname, 'src/content/index.ts'),
       },
-      output: [
-        {
-          format: 'iife',
-          entryFileNames: '[name].js',
-          chunkFileNames: 'assets/[name].[hash].js',
-          assetFileNames: 'assets/[name].[hash].[ext]',
-          dir: 'dist',
-          name: 'content',
-          exports: 'none',
-        }
-      ]
+      output: {
+        entryFileNames: '[name].js',
+        chunkFileNames: 'assets/[name].[hash].js',
+        assetFileNames: 'assets/[name].[hash].[ext]'
+      }
     }
   },
   test: {
@@ -97,3 +109,6 @@ export default defineConfig({
     setupFiles: ['./src/test/setup.ts'],
   }
 });
+
+// 環境変数に応じて設定を切り替え
+export default process.env.BUILD_TARGET === 'content' ? contentScriptConfig : mainConfig;

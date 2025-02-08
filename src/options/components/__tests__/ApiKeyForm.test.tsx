@@ -1,35 +1,44 @@
 /// <reference types="vitest" />
+import '@testing-library/jest-dom';
 import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { vi, describe, it, expect, beforeEach } from 'vitest';
 import ApiKeyForm from '../ApiKeyForm';
-import * as storage from '../../../utils/storage';
-import { act } from 'react-dom/test-utils';
+import { saveApiKey, getApiKey, deleteApiKey } from '../../../utils/storage';
 import userEvent from '@testing-library/user-event';
 
 // ストレージユーティリティをモック
 vi.mock('../../../utils/storage', () => ({
-  getApiKey: vi.fn(),
   saveApiKey: vi.fn(),
-  deleteApiKey: vi.fn(),
+  getApiKey: vi.fn(),
+  deleteApiKey: vi.fn()
 }));
 
 describe('ApiKeyForm', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    (getApiKey as jest.Mock).mockResolvedValue(null);
   });
 
-  it('renders API key input fields', () => {
+  it('renders API key input fields', async () => {
     render(<ApiKeyForm />);
 
-    expect(screen.getByRole('textbox', { name: /OpenAI APIキー/i })).toBeInTheDocument();
-    expect(screen.getByRole('combobox', { name: /LLMプロバイダー/i })).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.queryByText(/読み込み中/i)).not.toBeInTheDocument();
+    });
+
+    expect(screen.getByTestId('api-key-input')).toBeInTheDocument();
+    expect(screen.getByTestId('llm-provider-select')).toBeInTheDocument();
   });
 
   it('handles API key input changes', async () => {
     render(<ApiKeyForm />);
 
-    const input = screen.getByRole('textbox', { name: /OpenAI APIキー/i });
+    await waitFor(() => {
+      expect(screen.queryByText(/読み込み中/i)).not.toBeInTheDocument();
+    });
+
+    const input = screen.getByLabelText(/OpenAI APIキー/i);
     await userEvent.type(input, 'test-api-key');
     expect(input).toHaveValue('test-api-key');
   });
@@ -37,22 +46,32 @@ describe('ApiKeyForm', () => {
   it('displays validation error for invalid API key format', async () => {
     render(<ApiKeyForm />);
 
-    const input = screen.getByRole('textbox', { name: /OpenAI APIキー/i });
+    await waitFor(() => {
+      expect(screen.queryByText(/読み込み中/i)).not.toBeInTheDocument();
+    });
+
+    const input = screen.getByLabelText(/OpenAI APIキー/i);
     const submitButton = screen.getByRole('button', { name: /保存/i });
 
     await userEvent.type(input, 'invalid-key');
     await userEvent.click(submitButton);
 
-    expect(await screen.findByText(/APIキーの形式が正しくありません/i)).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getAllByText(/APIキーの形式が正しくありません/i)).toHaveLength(2);
+    });
   });
 
   it('handles form submission with valid API key', async () => {
-    const mockSaveApiKey = storage.saveApiKey as jest.Mock;
+    const mockSaveApiKey = saveApiKey as jest.Mock;
     mockSaveApiKey.mockResolvedValueOnce(undefined);
 
     render(<ApiKeyForm />);
 
-    const input = screen.getByRole('textbox', { name: /OpenAI APIキー/i });
+    await waitFor(() => {
+      expect(screen.queryByText(/読み込み中/i)).not.toBeInTheDocument();
+    });
+
+    const input = screen.getByLabelText(/OpenAI APIキー/i);
     const submitButton = screen.getByRole('button', { name: /保存/i });
 
     await userEvent.type(input, 'sk-test-valid-key');
@@ -68,8 +87,8 @@ describe('ApiKeyForm', () => {
   });
 
   it('shows saved API key with timestamp and allows deletion', async () => {
-    const mockGetApiKey = storage.getApiKey as jest.Mock;
-    const mockDeleteApiKey = storage.deleteApiKey as jest.Mock;
+    const mockGetApiKey = getApiKey as jest.Mock;
+    const mockDeleteApiKey = deleteApiKey as jest.Mock;
 
     mockGetApiKey.mockResolvedValueOnce({
       key: 'sk-test-key',
@@ -91,7 +110,7 @@ describe('ApiKeyForm', () => {
   });
 
   it('shows loading state while fetching API key', () => {
-    const mockGetApiKey = storage.getApiKey as jest.Mock;
+    const mockGetApiKey = getApiKey as jest.Mock;
     mockGetApiKey.mockImplementation(() => new Promise(() => {}));
 
     render(<ApiKeyForm />);
@@ -100,25 +119,29 @@ describe('ApiKeyForm', () => {
   });
 
   it('handles API key save error', async () => {
-    const mockSaveApiKey = storage.saveApiKey as jest.Mock;
+    const mockSaveApiKey = saveApiKey as jest.Mock;
     mockSaveApiKey.mockRejectedValueOnce(new Error('Storage error'));
 
     render(<ApiKeyForm />);
 
-    const input = screen.getByRole('textbox', { name: /OpenAI APIキー/i });
+    await waitFor(() => {
+      expect(screen.queryByText(/読み込み中/i)).not.toBeInTheDocument();
+    });
+
+    const input = screen.getByLabelText(/OpenAI APIキー/i);
     const submitButton = screen.getByRole('button', { name: /保存/i });
 
     await userEvent.type(input, 'sk-test-valid-key');
     await userEvent.click(submitButton);
 
     await waitFor(() => {
-      expect(screen.getByText(/APIキーの保存に失敗しました/i)).toBeInTheDocument();
+      expect(screen.getAllByText(/APIキーの保存に失敗しました/i)).toHaveLength(2);
     });
   });
 
   it('handles API key delete error', async () => {
-    const mockGetApiKey = storage.getApiKey as jest.Mock;
-    const mockDeleteApiKey = storage.deleteApiKey as jest.Mock;
+    const mockGetApiKey = getApiKey as jest.Mock;
+    const mockDeleteApiKey = deleteApiKey as jest.Mock;
 
     mockGetApiKey.mockResolvedValueOnce({
       key: 'sk-test-key',
@@ -138,7 +161,7 @@ describe('ApiKeyForm', () => {
     await userEvent.click(deleteButton);
 
     await waitFor(() => {
-      expect(screen.getByText(/APIキーの削除に失敗しました/i)).toBeInTheDocument();
+      expect(screen.getAllByText(/APIキーの削除に失敗しました/i)).toHaveLength(2);
     });
   });
 });

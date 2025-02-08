@@ -8,7 +8,11 @@ export interface ApiKey {
   timestamp?: string;
 }
 
-const ApiKeyForm: React.FC = () => {
+interface ApiKeyFormProps {
+  onSubmit?: (apiKey: ApiKey) => void;
+}
+
+const ApiKeyForm: React.FC<ApiKeyFormProps> = ({ onSubmit }) => {
   const [apiKey, setApiKey] = useState('');
   const [provider, setProvider] = useState<'openai' | 'claude'>('openai');
   const [loading, setLoading] = useState(true);
@@ -45,15 +49,17 @@ const ApiKeyForm: React.FC = () => {
       await saveApiKey({
         key: apiKey,
         provider,
-        timestamp: new Date().toLocaleString('ja-JP', {
-          year: 'numeric',
-          month: '2-digit',
-          day: '2-digit',
-          hour: '2-digit',
-          minute: '2-digit',
-          second: '2-digit',
-        }).replace(/\//g, '/').replace(/,/, '')
+        timestamp: new Date().toISOString()
       });
+
+      // onSubmitコールバックを呼び出し
+      if (onSubmit) {
+        onSubmit({
+          key: apiKey,
+          provider,
+          timestamp: new Date().toISOString()
+        });
+      }
 
       // 保存したAPIキーを再読み込み
       await loadApiKey();
@@ -80,6 +86,7 @@ const ApiKeyForm: React.FC = () => {
 
   const handleApiKeyChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setApiKey(e.target.value);
+    setError(null); // エラーをリセット
   };
 
   if (loading) {
@@ -119,6 +126,7 @@ const ApiKeyForm: React.FC = () => {
           error={!!error}
           helperText={error}
           data-testid="api-key-input"
+          inputProps={{ "data-testid": "api-key-input-field" }}
         />
 
         {error && (

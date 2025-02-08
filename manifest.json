@@ -35,9 +35,9 @@
   "content_scripts": [
     {
       "matches": ["<all_urls>"],
-      "js": ["content/index.js"],
-      "run_at": "document_start",
-      "world": "MAIN"
+      "js": ["content.js"],
+      "run_at": "document_idle",
+      "world": "ISOLATED"
     }
   ]
 }

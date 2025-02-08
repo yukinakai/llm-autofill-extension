@@ -17,8 +17,7 @@ vi.mock('webextension-polyfill', () => ({
 describe('Storage Utils', () => {
   const mockApiKey: ApiKey = {
     key: 'sk-test-key',
-    provider: 'openai',
-    timestamp: new Date().toISOString()
+    provider: 'openai'
   };
 
   const chrome = {

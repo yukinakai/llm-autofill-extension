@@ -1,5 +1,5 @@
+import { createRoot } from 'react-dom/client';
 import React, { useState } from 'react';
-import * as ReactDOM from 'react-dom/client';
 import './index.css';
 
 const App = () => {
@@ -9,32 +9,31 @@ const App = () => {
     console.log('自動入力を開始します');
     try {
       setError(null);
+
+      // 現在のタブを取得
       const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
       console.log('現在のタブ:', tab);
-      
+
       if (!tab.id) {
         console.error('タブIDが見つかりません');
         throw new Error('タブIDが見つかりません');
       }
 
-      console.log('コンテンツスクリプトが読み込まれているか確認');
-      try {
-        await chrome.scripting.executeScript({
-          target: { tabId: tab.id },
-          func: () => {
-            console.log('コンテンツスクリプトの存在確認');
-            return true;
-          }
-        });
-        console.log('コンテンツスクリプトが読み込まれています');
-      } catch (error) {
-        console.error('コンテンツスクリプトの確認中にエラーが発生しました:', error);
-        throw error;
-      }
-
+      // コンテンツスクリプトにメッセージを送信
       console.log('コンテンツスクリプトにメッセージを送信します');
-      await chrome.tabs.sendMessage(tab.id, { action: 'autofill' });
-      console.log('メッセージを送信しました');
+      try {
+        const response = await chrome.tabs.sendMessage(tab.id, { action: 'autofill' });
+        console.log('メッセージ送信の結果:', response);
+      } catch (error) {
+        console.error('メッセージ送信中にエラーが発生しました:', error);
+        // ページをリロード
+        await chrome.tabs.reload(tab.id);
+        // リロードが完了するまで待機
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        // 再度メッセージを送信
+        const response = await chrome.tabs.sendMessage(tab.id, { action: 'autofill' });
+        console.log('メッセージ再送信の結果:', response);
+      }
     } catch (error) {
       console.error('エラーが発生しました:', error);
       setError(error instanceof Error ? error.message : '予期せぬエラーが発生しました');
@@ -69,7 +68,7 @@ const App = () => {
   );
 };
 
-ReactDOM.createRoot(document.getElementById('root')!).render(
+createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <App />
   </React.StrictMode>
