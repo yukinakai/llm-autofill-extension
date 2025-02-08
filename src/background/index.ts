@@ -56,14 +56,20 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
         });
         throw new Error(`API request failed: ${response.status} ${response.statusText}\n${errorText}`);
       }
-      return response.json();
-    })
-    .then(data => {
+      const data = await response.json();
       console.log('Background: APIレスポンス:', data);
-      if (!data.content) {
-        throw new Error('Invalid API response: content is missing');
+
+      // Claude 3のレスポンス構造に対応
+      if (!data.content || !Array.isArray(data.content) || data.content.length === 0) {
+        throw new Error('Invalid API response: content is missing or invalid');
       }
-      sendResponse({ success: true, content: data.content });
+
+      const content = data.content[0].text;
+      if (typeof content !== 'string') {
+        throw new Error('Invalid API response: content is not a string');
+      }
+
+      sendResponse({ success: true, content: content });
     })
     .catch(error => {
       console.error('Background: API呼び出しに失敗しました:', error);
