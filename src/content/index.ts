@@ -218,7 +218,6 @@ ${field.label ? `ラベル: ${field.label}` : ''}
   // グローバルオブジェクトに関数を追加
   window.detectForms = detectForms;
   window.findLabel = findLabel;
-  //@ts-ignore
   window.LLMService = LLMServiceImpl;
   window.getApiKey = getApiKey;
   window.getProfile = getProfile;
@@ -245,7 +244,6 @@ ${field.label ? `ラベル: ${field.label}` : ''}
   if (process.env.NODE_ENV === 'test') {
     window.detectForms = detectForms;
     window.findLabel = findLabel;
-    //@ts-ignore
     window.LLMService = LLMServiceImpl;
     window.getApiKey = getApiKey;
     window.getProfile = getProfile;
