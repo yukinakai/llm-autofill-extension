@@ -9,12 +9,6 @@ export {};
     Profile: 'user_profile'
   };
 
-  interface ApiKey {
-    key: string;
-    provider: LLMProvider;
-    timestamp: string;
-  }
-
   // フォーム検出のロジック
   function detectForms() {
     const forms = document.querySelectorAll('form');
