@@ -1,7 +1,6 @@
 /// <reference types="chrome"/>
-/// <reference path="../../types/global.d.ts"/>
 
-type LLMProvider = 'openai' | 'claude';
+import type { LLMProvider, LLMService } from '../../types/global';
 
 export {};
 
@@ -83,10 +82,6 @@ export {};
   }
 
   // LLMサービス
-  interface LLMService {
-    matchFieldWithProfile(field: { name: string; type: string; label?: string }, profile: Record<string, string>): Promise<string>;
-  }
-
   class LLMServiceImpl implements LLMService {
     private apiKey: string;
     private provider: LLMProvider;
