@@ -2,13 +2,26 @@
   "manifest_version": 3,
   "name": "LLM Autofill Extension",
   "version": "0.1.0",
-  "description": "LLMを活用したインテリジェントなフォーム自動入力拡張機能",
+  "description": "LLMを活用して、あらゆるウェブフォームに対してインテリジェントな自動入力を実現する拡張機能です。複数のプロフィールを登録し、フォームの項目名の揺れにも柔軟に対応します。",
   "permissions": [
     "storage",
-    "activeTab"
+    "activeTab",
+    "scripting"
   ],
   "action": {
-    "default_popup": "src/popup/index.html"
+    "default_popup": "src/popup/index.html",
+    "default_icon": {
+      "16": "src/assets/icon16.png",
+      "32": "src/assets/icon32.png",
+      "48": "src/assets/icon48.png",
+      "128": "src/assets/icon128.png"
+    }
+  },
+  "icons": {
+    "16": "src/assets/icon16.png",
+    "32": "src/assets/icon32.png",
+    "48": "src/assets/icon48.png",
+    "128": "src/assets/icon128.png"
   },
   "options_page": "src/options/index.html",
   "background": {
