@@ -4,10 +4,10 @@ import userEvent from '@testing-library/user-event';
 import ProfileForm from '../ProfileForm';
 
 describe('ProfileForm', () => {
-  const mockOnSave = jest.fn();
+  const mockOnSave = vi.fn();
 
   beforeEach(() => {
-    mockOnSave.mockClear();
+    vi.clearAllMocks();
   });
 
   it('初期状態で1つの空のフィールドが表示される', () => {

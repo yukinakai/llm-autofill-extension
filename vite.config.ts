@@ -37,6 +37,8 @@ const copyAssets = () => {
   };
 };
 
+/// <reference types="vitest" />
+
 export default defineConfig({
   plugins: [react(), copyAssets()],
   resolve: {
@@ -61,5 +63,10 @@ export default defineConfig({
         assetFileNames: 'assets/[name].[hash][extname]',
       },
     },
+  },
+  test: {
+    globals: true,
+    environment: 'jsdom',
+    setupFiles: ['./src/setupTests.ts'],
   },
 });
