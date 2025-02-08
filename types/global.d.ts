@@ -17,14 +17,7 @@ declare global {
   interface Window {
     detectForms: () => { name: string; type: string; label?: string }[];
     findLabel: (input: HTMLInputElement) => string | undefined;
-    LLMService: { 
-      // コンストラクタの型定義を明示的に指定
-      new (apiKey: string, provider: LLMProvider): LLMService & {
-        // プライベートメンバーも型定義に含める
-        apiKey: string;
-        provider: LLMProvider;
-      };
-    };
+    LLMService: { new(apiKey: string, provider: LLMProvider): LLMService };
     getApiKey: () => Promise<{ key: string; type: LLMProvider } | null>;
     getProfile: () => Promise<Record<string, string> | null>;
     autofillForms: () => Promise<void>;

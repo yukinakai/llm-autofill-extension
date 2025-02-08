@@ -5,10 +5,86 @@ import type { LLMProvider, LLMService } from '../../types/global';
 
 export {};
 
-(function() {
+// LLMサービスの実装
+class LLMServiceImpl implements LLMService {
+  public readonly apiKey: string;
+  public readonly provider: LLMProvider;
+
+  constructor(apiKey: string, provider: LLMProvider) {
+    this.apiKey = apiKey;
+    this.provider = provider;
+  }
+
+  async matchFieldWithProfile(
+    field: { name: string; type: string; label?: string },
+    profile: Record<string, string>
+  ): Promise<string> {
+    try {
+      const prompt = `フィールド名: ${field.name}
+タイプ: ${field.type}
+${field.label ? `ラベル: ${field.label}` : ''}
+プロフィール: ${JSON.stringify(profile, null, 2)}
+
+上記のフォームフィールドに対して、プロフィールから最適な値を選択してください。`;
+
+      const response = await this.callClaudeAPI(prompt);
+      return response.trim();
+    } catch (error) {
+      console.error('フィールドのマッチングに失敗しました:', error);
+      throw error;
+    }
+  }
+
+  private async callClaudeAPI(prompt: string): Promise<string> {
+    if (this.provider !== 'claude') {
+      throw new Error('Unsupported LLM provider');
+    }
+
+    try {
+      console.log('Content: Background Scriptにリクエストを送信します');
+
+      return new Promise((resolve, reject) => {
+        chrome.runtime.sendMessage(
+          {
+            action: 'callAnthropicAPI',
+            apiKey: this.apiKey,
+            prompt: prompt,
+          },
+          (response) => {
+            if (chrome.runtime.lastError) {
+              console.error('Content: メッセージ送信エラー:', chrome.runtime.lastError);
+              reject(new Error(chrome.runtime.lastError.message));
+              return;
+            }
+
+            console.log('Content: Background Scriptからレスポンスを受信:', response);
+
+            if (response.success) {
+              resolve(response.content);
+            } else {
+              reject(new Error(response.error));
+            }
+          }
+        );
+      });
+    } catch (error) {
+      console.error('Content: API呼び出しに失敗しました:', {
+        error: error,
+        message: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
+      });
+      if (error instanceof Error) {
+        throw new Error(`API call failed: ${error.message}`);
+      }
+      throw error;
+    }
+  }
+}
+
+(function () {
   const StorageKey = {
     ApiKey: 'llm_api_key',
-    Profile: 'user_profile'
+    Profile: 'user_profile',
   };
 
   // フォーム検出のロジック
@@ -16,14 +92,14 @@ export {};
     const forms = document.querySelectorAll('form');
     const fields: { name: string; type: string; label?: string }[] = [];
 
-    forms.forEach(form => {
+    forms.forEach((form) => {
       const inputs = form.querySelectorAll('input');
-      inputs.forEach(input => {
+      inputs.forEach((input) => {
         if (input.type !== 'submit' && input.type !== 'button' && input.type !== 'hidden') {
           const field = {
             name: input.name || input.id,
             type: input.type,
-            label: findLabel(input)
+            label: findLabel(input),
           };
           fields.push(field);
         }
@@ -64,7 +140,7 @@ export {};
         if (apiKey?.key && apiKey?.provider) {
           resolve({
             key: apiKey.key,
-            type: apiKey.provider as LLMProvider
+            type: apiKey.provider as LLMProvider,
           });
         } else {
           resolve(null);
@@ -80,79 +156,6 @@ export {};
         resolve(result[StorageKey.Profile] || null);
       });
     });
-  }
-
-  // LLMサービスの実装
-  class LLMServiceImpl implements LLMService {
-    constructor(
-      public readonly apiKey: string,
-      public readonly provider: LLMProvider
-    ) {}
-
-    async matchFieldWithProfile(
-      field: { name: string; type: string; label?: string },
-      profile: Record<string, string>
-    ): Promise<string> {
-      try {
-        const prompt = `フィールド名: ${field.name}
-タイプ: ${field.type}
-${field.label ? `ラベル: ${field.label}` : ''}
-プロフィール: ${JSON.stringify(profile, null, 2)}
-
-上記のフォームフィールドに対して、プロフィールから最適な値を選択してください。`;
-
-        const response = await this.callClaudeAPI(prompt);
-        return response.trim();
-      } catch (error) {
-        console.error('フィールドのマッチングに失敗しました:', error);
-        throw error;
-      }
-    }
-
-    private async callClaudeAPI(prompt: string): Promise<string> {
-      if (this.provider !== 'claude') {
-        throw new Error("Unsupported LLM provider");
-      }
-
-      try {
-        console.log('Content: Background Scriptにリクエストを送信します');
-
-        return new Promise((resolve, reject) => {
-          chrome.runtime.sendMessage(
-            {
-              action: 'callAnthropicAPI',
-              apiKey: this.apiKey,
-              prompt: prompt
-            },
-            response => {
-              if (chrome.runtime.lastError) {
-                console.error('Content: メッセージ送信エラー:', chrome.runtime.lastError);
-                reject(new Error(chrome.runtime.lastError.message));
-                return;
-              }
-
-              console.log('Content: Background Scriptからレスポンスを受信:', response);
-
-              if (response.success) {
-                resolve(response.content);
-              } else {
-                reject(new Error(response.error));
-              }
-            }
-          );
-        });
-      } catch (error) {
-        console.error('Content: API呼び出しに失敗しました:', {
-          error: error,
-          message: error instanceof Error ? error.message : String(error),
-          stack: error instanceof Error ? error.stack : undefined
-        });
-        if (error instanceof Error) {
-          throw new Error(`API call failed: ${error.message}`);
-        }
-        throw error;
-      }
-    }
   }
 
   // オートフィル機能の実装
@@ -215,6 +218,7 @@ ${field.label ? `ラベル: ${field.label}` : ''}
   // グローバルオブジェクトに関数を追加
   window.detectForms = detectForms;
   window.findLabel = findLabel;
+  //@ts-ignore
   window.LLMService = LLMServiceImpl;
   window.getApiKey = getApiKey;
   window.getProfile = getProfile;
@@ -225,12 +229,14 @@ ${field.label ? `ラベル: ${field.label}` : ''}
   chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     console.log('メッセージを受信しました:', message);
     if (message.action === 'autofill') {
-      autofillForms().then(() => {
-        sendResponse({ success: true });
-      }).catch((error) => {
-        console.error('Error:', error);
-        sendResponse({ success: false, error: error.message });
-      });
+      autofillForms()
+        .then(() => {
+          sendResponse({ success: true });
+        })
+        .catch((error) => {
+          console.error('Error:', error);
+          sendResponse({ success: false, error: error.message });
+        });
       return true; // 非同期レスポンスを示す
     }
   });
@@ -239,6 +245,7 @@ ${field.label ? `ラベル: ${field.label}` : ''}
   if (process.env.NODE_ENV === 'test') {
     window.detectForms = detectForms;
     window.findLabel = findLabel;
+    //@ts-ignore
     window.LLMService = LLMServiceImpl;
     window.getApiKey = getApiKey;
     window.getProfile = getProfile;
