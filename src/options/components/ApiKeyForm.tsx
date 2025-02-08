@@ -15,7 +15,7 @@ import {
 import DeleteIcon from '@mui/icons-material/Delete';
 import { saveApiKey, loadApiKey, deleteApiKey } from '../../utils/storage';
 
-type LLMProvider = 'openai' | 'anthropic';
+type LLMProvider = 'openai' | 'gemini' | 'claude';
 
 export interface ApiKey {
   provider: LLMProvider;
@@ -76,9 +76,15 @@ const ApiKeyForm: React.FC<ApiKeyFormProps> = ({ onSubmit }) => {
           return false;
         }
         break;
-      case 'anthropic':
+      case 'gemini':
+        if (!key.startsWith('AIzaSy')) {
+          setError('GeminiのAPIキーは"AIzaSy"で始まる必要があります');
+          return false;
+        }
+        break;
+      case 'claude':
         if (!key.startsWith('sk-ant-')) {
-          setError('AnthropicのAPIキーは"sk-ant-"で始まる必要があります');
+          setError('ClaudeのAPIキーは"sk-ant-"で始まる必要があります');
           return false;
         }
         break;
@@ -155,7 +161,7 @@ const ApiKeyForm: React.FC<ApiKeyFormProps> = ({ onSubmit }) => {
                   登録済みのAPIキー
                 </Typography>
                 <Typography variant="body2" color="textSecondary">
-                  プロバイダー: {savedApiKey.provider === 'openai' ? 'OpenAI' : 'Anthropic'}
+                  プロバイダー: {savedApiKey.provider === 'openai' ? 'OpenAI' : savedApiKey.provider === 'gemini' ? 'Gemini' : 'Claude'}
                 </Typography>
                 <Typography variant="body2" color="textSecondary">
                   登録日時: {savedApiKey.timestamp}
@@ -179,19 +185,20 @@ const ApiKeyForm: React.FC<ApiKeyFormProps> = ({ onSubmit }) => {
                 aria-label="LLMプロバイダー"
               >
                 <MenuItem value="openai">OpenAI</MenuItem>
-                <MenuItem value="anthropic">Anthropic</MenuItem>
+                <MenuItem value="gemini">Gemini</MenuItem>
+                <MenuItem value="claude">Claude</MenuItem>
               </Select>
             </FormControl>
 
             <TextField
               fullWidth
-              label={`${selectedProvider === 'openai' ? 'OpenAI' : 'Anthropic'} APIキー`}
+              label={`${selectedProvider === 'openai' ? 'OpenAI' : selectedProvider === 'gemini' ? 'Gemini' : 'Claude'} APIキー`}
               type="password"
               value={apiKey}
               onChange={handleApiKeyChange}
               error={!!error}
               inputProps={{
-                'aria-label': `${selectedProvider === 'openai' ? 'OpenAI' : 'Anthropic'} APIキー`,
+                'aria-label': `${selectedProvider === 'openai' ? 'OpenAI' : selectedProvider === 'gemini' ? 'Gemini' : 'Claude'} APIキー`,
                 role: 'textbox'
               }}
             />
