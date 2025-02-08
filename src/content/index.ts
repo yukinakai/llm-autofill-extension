@@ -81,7 +81,11 @@ export {};
   }
 
   // LLMサービス
-  class LLMService {
+  interface LLMService {
+    matchFieldWithProfile(field: { name: string; type: string; label?: string }, profile: Record<string, string>): Promise<string>;
+  }
+
+  class LLMServiceImpl implements LLMService {
     private apiKey: string;
     private provider: LLMProvider;
 
@@ -172,7 +176,7 @@ ${field.label ? `ラベル: ${field.label}` : ''}
       }
 
       // LLMサービスを初期化
-      const llmService = new LLMService(apiKeyData.key, apiKeyData.type);
+      const llmService = new LLMServiceImpl(apiKeyData.key, apiKeyData.type);
 
       // 各フィールドに対してマッチング処理を実行
       for (const field of fields) {
@@ -203,7 +207,7 @@ ${field.label ? `ラベル: ${field.label}` : ''}
   // グローバルオブジェクトに関数を追加
   window.detectForms = detectForms;
   window.findLabel = findLabel;
-  window.LLMService = LLMService;
+  window.LLMService = LLMServiceImpl;
   window.getApiKey = getApiKey;
   window.getProfile = getProfile;
   window.autofillForms = autofillForms;
@@ -227,7 +231,7 @@ ${field.label ? `ラベル: ${field.label}` : ''}
   if (process.env.NODE_ENV === 'test') {
     window.detectForms = detectForms;
     window.findLabel = findLabel;
-    window.LLMService = LLMService;
+    window.LLMService = LLMServiceImpl;
     window.getApiKey = getApiKey;
     window.getProfile = getProfile;
   }
