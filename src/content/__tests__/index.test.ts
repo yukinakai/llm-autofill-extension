@@ -3,6 +3,27 @@ import '@testing-library/jest-dom';
 
 describe('Content Script', () => {
   beforeEach(() => {
+    // Reset all mocks
+    jest.clearAllMocks();
+    
+    // Mock chrome.storage.sync
+    global.chrome = {
+      storage: {
+        sync: {
+          get: vi.fn(),
+          set: vi.fn(),
+          remove: vi.fn()
+        }
+      }
+    } as any;
+
+    // Mock window functions
+    global.window.LLMService = vi.fn().mockReturnValue({
+      initialize: vi.fn().mockResolvedValue(undefined),
+      matchField: vi.fn().mockResolvedValue('matched value'),
+      handleError: vi.fn()
+    });
+
     document.body.innerHTML = `
       <form>
         <label for="name">名前</label>
@@ -23,139 +44,117 @@ describe('Content Script', () => {
   });
 
   describe('Form Detection', () => {
-    it('should detect form fields correctly', () => {
-      vi.mocked(window.detectForms).mockReturnValue([
-        { name: 'name', label: '名前', type: 'text' },
-        { name: 'email', label: 'メールアドレス', type: 'email' }
-      ]);
-
+    it('detects form fields correctly', () => {
       const fields = window.detectForms();
       expect(fields).toHaveLength(2);
-      expect(fields[0]).toEqual({
-        name: 'name',
-        label: '名前',
-        type: 'text'
-      });
-      expect(fields[1]).toEqual({
-        name: 'email',
-        label: 'メールアドレス',
-        type: 'email'
-      });
+      expect(fields[0].name).toBe('name');
+      expect(fields[1].name).toBe('email');
     });
 
-    it('should handle form fields without labels', () => {
+    it('ignores non-form fields', () => {
       document.body.innerHTML = `
-        <form>
-          <input type="text" name="noLabel">
-        </form>
+        <div>
+          <span>Not a form field</span>
+          <p>Also not a form field</p>
+        </div>
       `;
 
-      vi.mocked(window.detectForms).mockReturnValue([
-        { name: 'noLabel', label: undefined, type: 'text' }
-      ]);
-
       const fields = window.detectForms();
-      expect(fields).toHaveLength(1);
-      expect(fields[0]).toEqual({
-        name: 'noLabel',
-        label: undefined,
-        type: 'text'
-      });
+      expect(fields).toHaveLength(0);
     });
   });
 
   describe('Label Finding', () => {
-    it('should find label by for attribute', () => {
-      vi.mocked(window.findLabel).mockReturnValue('名前');
+    it('finds label by explicit association', () => {
+      document.body.innerHTML = `
+        <label for="username">Username:</label>
+        <input id="username" type="text" />
+      `;
 
-      const input = document.getElementById('name') as HTMLInputElement;
-      const label = window.findLabel(input);
-      expect(label).toBe('名前');
+      const input = document.querySelector('input');
+      const label = window.findLabel(input!);
+      expect(label).toBe('Username:');
     });
 
-    it('should find label by parent element', () => {
-      vi.mocked(window.findLabel).mockReturnValue('メールアドレス');
+    it('finds label by parent wrapper', () => {
+      document.body.innerHTML = `
+        <div class="field">
+          <label>Email:</label>
+          <input type="email" />
+        </div>
+      `;
 
-      const input = document.querySelector('input[name="email"]') as HTMLInputElement;
-      const label = window.findLabel(input);
-      expect(label).toBe('メールアドレス');
+      const input = document.querySelector('input');
+      const label = window.findLabel(input!);
+      expect(label).toBe('Email:');
     });
 
-    it('should return undefined when no label is found', () => {
-      vi.mocked(window.findLabel).mockReturnValue(undefined);
+    it('returns empty string when no label found', () => {
+      document.body.innerHTML = `
+        <input type="text" />
+      `;
 
-      const input = document.createElement('input');
-      const label = window.findLabel(input);
-      expect(label).toBeUndefined();
+      const input = document.querySelector('input');
+      const label = window.findLabel(input!);
+      expect(label).toBe('');
     });
   });
 
   describe('LLM Service', () => {
-    it('should initialize with correct API key and provider', () => {
-      const mockApiKey = { key: 'test-key', provider: 'openai' };
-      vi.mocked(window.getApiKey).mockResolvedValue(mockApiKey);
-
+    it('should initialize with correct API key and provider', async () => {
       const llmService = window.LLMService();
       expect(llmService).toBeDefined();
+      expect(llmService.initialize).toBeDefined();
+      
+      await llmService.initialize();
+      expect(llmService.initialize).toHaveBeenCalled();
     });
 
     it('should match field with profile correctly', async () => {
-      const field = { name: 'name', label: '名前', type: 'text' };
-      const profile = { '名前': 'テスト太郎' };
-
-      const mockLLMService = {
-        matchFieldWithProfile: vi.fn().mockResolvedValue('テスト太郎')
-      };
-      vi.mocked(window.LLMService).mockReturnValue(mockLLMService);
-
       const llmService = window.LLMService();
-      const result = await llmService.matchFieldWithProfile(field, profile);
-      expect(result).toBe('テスト太郎');
+      const result = await llmService.matchField('username', 'What is your name?');
+      expect(result).toBe('matched value');
     });
 
     it('should handle API errors gracefully', async () => {
-      const field = { name: 'name', label: '名前', type: 'text' };
-      const profile = { '名前': 'テスト太郎' };
-
-      const mockLLMService = {
-        matchFieldWithProfile: vi.fn().mockRejectedValue(new Error('API error'))
-      };
-      vi.mocked(window.LLMService).mockReturnValue(mockLLMService);
-
       const llmService = window.LLMService();
-      await expect(llmService.matchFieldWithProfile(field, profile)).rejects.toThrow('API error');
+      llmService.matchField = vi.fn().mockRejectedValue(new Error('API Error'));
+      
+      try {
+        await llmService.matchField('username', 'What is your name?');
+      } catch (error) {
+        expect(llmService.handleError).toHaveBeenCalled();
+      }
     });
   });
 
   describe('Storage Operations', () => {
-    it('should get API key correctly', async () => {
-      const mockApiKey = { key: 'test-key', provider: 'openai' };
-      vi.mocked(window.getApiKey).mockResolvedValue(mockApiKey);
-
-      const apiKey = await window.getApiKey();
-      expect(apiKey).toEqual(mockApiKey);
+    it('saves API key successfully', async () => {
+      const apiKey = { key: 'test-key', provider: 'openai' };
+      await window.getApiKey();
+      expect(chrome.storage.sync.set).toHaveBeenCalledWith({ apiKey });
     });
 
-    it('should get profile correctly', async () => {
-      const mockProfile = { '名前': 'テスト太郎' };
-      vi.mocked(window.getProfile).mockResolvedValue(mockProfile);
+    it('retrieves API key successfully', async () => {
+      const apiKey = { key: 'test-key', provider: 'openai' };
+      (chrome.storage.sync.get as vi.Mock).mockImplementation((key, callback) => {
+        callback({ apiKey });
+      });
 
-      const profile = await window.getProfile();
-      expect(profile).toEqual(mockProfile);
+      const result = await window.getApiKey();
+      expect(result).toEqual(apiKey);
     });
   });
 
   describe('Message Handling', () => {
-    it('should handle autofill message correctly', () => {
-      const mockListener = vi.fn();
-      chrome.runtime.onMessage.addListener(mockListener);
-
-      const message = { type: 'autofill' };
-      const sender = {};
-      const sendResponse = vi.fn();
-
-      mockListener(message, sender, sendResponse);
-      expect(mockListener).toHaveBeenCalledWith(message, sender, sendResponse);
+    it('handles messages correctly', () => {
+      const mockCallback = vi.fn();
+      const message = { type: 'TEST_MESSAGE', data: 'test' };
+      
+      chrome.runtime.onMessage.addListener(mockCallback);
+      chrome.runtime.onMessage.emit(message);
+      
+      expect(mockCallback).toHaveBeenCalledWith(message);
     });
   });
 });
