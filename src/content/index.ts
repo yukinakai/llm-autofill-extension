@@ -1,28 +1,19 @@
 /// <reference types="chrome"/>
+/// <reference path="../../types/global.d.ts"/>
 
 export {};
-
-declare global {
-  interface Window {
-    detectForms: () => { name: string; type: string; label?: string }[];
-    findLabel: (input: HTMLInputElement) => string | undefined;
-    LLMService: new (apiKey: string, provider: string) => {
-      matchFieldWithProfile: (
-        field: { name: string; type: string; label?: string },
-        profile: Record<string, string>
-      ) => Promise<string>;
-    };
-    getApiKey: () => Promise<{ key: string; type: string } | null>;
-    getProfile: () => Promise<Record<string, string> | null>;
-    autofillForms: () => Promise<void>;
-  }
-}
 
 (function() {
   const StorageKey = {
     ApiKey: 'llm_api_key',
     Profile: 'user_profile'
   };
+
+  interface ApiKey {
+    key: string;
+    provider: LLMProvider;
+    timestamp: string;
+  }
 
   // フォーム検出のロジック
   function detectForms() {
@@ -69,21 +60,15 @@ declare global {
     return undefined;
   }
 
-  interface ApiKey {
-    provider: string;
-    key: string;
-    timestamp: string;
-  }
-
   // APIキーを取得する関数
-  async function getApiKey(): Promise<{ key: string; type: string } | null> {
+  async function getApiKey(): Promise<{ key: string; type: LLMProvider } | null> {
     return new Promise((resolve) => {
       chrome.storage.sync.get([StorageKey.ApiKey], (result) => {
-        const apiKey: ApiKey | undefined = result[StorageKey.ApiKey];
+        const apiKey = result[StorageKey.ApiKey];
         if (apiKey?.key && apiKey?.provider) {
           resolve({
             key: apiKey.key,
-            type: apiKey.provider
+            type: apiKey.provider as LLMProvider
           });
         } else {
           resolve(null);
@@ -104,9 +89,9 @@ declare global {
   // LLMサービス
   class LLMService {
     private apiKey: string;
-    private provider: string;
+    private provider: LLMProvider;
 
-    constructor(apiKey: string, provider: string) {
+    constructor(apiKey: string, provider: LLMProvider) {
       this.apiKey = apiKey;
       this.provider = provider;
     }
