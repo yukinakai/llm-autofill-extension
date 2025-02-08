@@ -115,55 +115,34 @@ ${field.label ? `ラベル: ${field.label}` : ''}
       }
 
       try {
-        const requestBody = {
-          model: 'claude-3-haiku-20240307',
-          max_tokens: 1000,
-          messages: [{ role: 'user', content: prompt }]
-        };
+        console.log('Content: Background Scriptにリクエストを送信します');
 
-        console.log('APIリクエストを送信します:', {
-          url: 'https://api.anthropic.com/v1/messages',
-          provider: this.provider,
-          apiKeyLength: this.apiKey.length,
-          requestBody: requestBody
+        return new Promise((resolve, reject) => {
+          chrome.runtime.sendMessage(
+            {
+              action: 'callAnthropicAPI',
+              apiKey: this.apiKey,
+              prompt: prompt
+            },
+            response => {
+              if (chrome.runtime.lastError) {
+                console.error('Content: メッセージ送信エラー:', chrome.runtime.lastError);
+                reject(new Error(chrome.runtime.lastError.message));
+                return;
+              }
+
+              console.log('Content: Background Scriptからレスポンスを受信:', response);
+
+              if (response.success) {
+                resolve(response.content);
+              } else {
+                reject(new Error(response.error));
+              }
+            }
+          );
         });
-
-        const response = await fetch('https://api.anthropic.com/v1/messages', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'x-api-key': this.apiKey,
-            'anthropic-version': '2023-06-01'
-          },
-          body: JSON.stringify(requestBody)
-        });
-
-        if (!response.ok) {
-          const errorText = await response.text();
-          const errorDetails = {
-            status: response.status,
-            statusText: response.statusText,
-            headers: Object.fromEntries(response.headers.entries()),
-            error: errorText
-          };
-          console.error('APIレスポンスエラー:', errorDetails);
-          throw new Error(`API request failed: ${response.status} ${response.statusText}\n${errorText}`);
-        }
-
-        const data = await response.json();
-        console.log('APIレスポンス:', {
-          status: response.status,
-          headers: Object.fromEntries(response.headers.entries()),
-          data: data
-        });
-
-        if (!data.content) {
-          throw new Error('Invalid API response: content is missing');
-        }
-
-        return data.content;
       } catch (error) {
-        console.error('API呼び出しに失敗しました:', {
+        console.error('Content: API呼び出しに失敗しました:', {
           error: error,
           message: error instanceof Error ? error.message : String(error),
           stack: error instanceof Error ? error.stack : undefined
