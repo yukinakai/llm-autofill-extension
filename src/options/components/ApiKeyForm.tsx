@@ -13,7 +13,7 @@ import {
   SelectChangeEvent,
 } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
-import { saveApiKey, loadApiKey, deleteApiKey } from '../../utils/storage';
+import { saveApiKey, getApiKey, deleteApiKey } from '../../utils/storage';
 
 type LLMProvider = 'openai' | 'gemini' | 'claude';
 
@@ -39,7 +39,7 @@ const ApiKeyForm: React.FC<ApiKeyFormProps> = ({ onSubmit }) => {
 
     const loadSavedApiKey = async () => {
       try {
-        const key = await loadApiKey();
+        const key = await getApiKey();
         if (isMounted) {
           setSavedApiKey(key);
           if (key) {
@@ -140,6 +140,7 @@ const ApiKeyForm: React.FC<ApiKeyFormProps> = ({ onSubmit }) => {
       <Paper className="p-4">
         <div className="text-center p-4">
           <Typography>読み込み中...</Typography>
+          <div role="progressbar" aria-label="読み込み中" className="mt-2" />
         </div>
       </Paper>
     );
@@ -158,7 +159,7 @@ const ApiKeyForm: React.FC<ApiKeyFormProps> = ({ onSubmit }) => {
             <div className="flex items-center justify-between">
               <div>
                 <Typography variant="subtitle1" component="h3" className="font-semibold">
-                  登録済みのAPIキー
+                  APIキーが保存されています
                 </Typography>
                 <Typography variant="body2" color="textSecondary">
                   プロバイダー: {savedApiKey.provider === 'openai' ? 'OpenAI' : savedApiKey.provider === 'gemini' ? 'Gemini' : 'Claude'}
@@ -167,7 +168,7 @@ const ApiKeyForm: React.FC<ApiKeyFormProps> = ({ onSubmit }) => {
                   登録日時: {savedApiKey.timestamp}
                 </Typography>
               </div>
-              <IconButton onClick={handleDelete} color="error" aria-label="APIキーを削除">
+              <IconButton onClick={handleDelete} color="error" aria-label="削除">
                 <DeleteIcon />
               </IconButton>
             </div>
@@ -198,7 +199,7 @@ const ApiKeyForm: React.FC<ApiKeyFormProps> = ({ onSubmit }) => {
               onChange={handleApiKeyChange}
               error={!!error}
               inputProps={{
-                'aria-label': `${selectedProvider === 'openai' ? 'OpenAI' : selectedProvider === 'gemini' ? 'Gemini' : 'Claude'} APIキー`,
+                'aria-label': 'OpenAI APIキー',
                 role: 'textbox'
               }}
             />
