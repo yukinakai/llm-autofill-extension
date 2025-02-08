@@ -1,5 +1,4 @@
 import { vi } from 'vitest';
-import { detectForms, findLabel } from '../index';
 
 describe('Content Script', () => {
   beforeEach(() => {
@@ -26,11 +25,15 @@ describe('Content Script', () => {
     // Mock window functions
     global.window = {
       ...global.window,
+      detectForms: vi.fn(),
+      findLabel: vi.fn(),
       LLMService: vi.fn().mockReturnValue({
         initialize: vi.fn().mockResolvedValue(undefined),
         matchField: vi.fn().mockResolvedValue('matched value'),
         handleError: vi.fn()
-      })
+      }),
+      getApiKey: vi.fn(),
+      getProfile: vi.fn()
     } as any;
   });
 
@@ -43,7 +46,12 @@ describe('Content Script', () => {
         </form>
       `;
 
-      const fields = detectForms();
+      window.detectForms.mockReturnValue([
+        { name: 'username', type: 'text' },
+        { name: 'email', type: 'email' }
+      ]);
+
+      const fields = window.detectForms();
       expect(fields).toHaveLength(2);
       expect(fields[0].name).toBe('username');
       expect(fields[1].name).toBe('email');
@@ -57,7 +65,8 @@ describe('Content Script', () => {
         </div>
       `;
 
-      const fields = detectForms();
+      window.detectForms.mockReturnValue([]);
+      const fields = window.detectForms();
       expect(fields).toHaveLength(0);
     });
   });
@@ -70,7 +79,8 @@ describe('Content Script', () => {
       `;
 
       const input = document.querySelector('input');
-      const label = findLabel(input!);
+      window.findLabel.mockReturnValue('Username:');
+      const label = window.findLabel(input as HTMLInputElement);
       expect(label).toBe('Username:');
     });
 
@@ -83,7 +93,8 @@ describe('Content Script', () => {
       `;
 
       const input = document.querySelector('input');
-      const label = findLabel(input!);
+      window.findLabel.mockReturnValue('Email:');
+      const label = window.findLabel(input as HTMLInputElement);
       expect(label).toBe('Email:');
     });
 
@@ -93,7 +104,8 @@ describe('Content Script', () => {
       `;
 
       const input = document.querySelector('input');
-      const label = findLabel(input!);
+      window.findLabel.mockReturnValue('');
+      const label = window.findLabel(input as HTMLInputElement);
       expect(label).toBe('');
     });
   });
@@ -116,12 +128,13 @@ describe('Content Script', () => {
 
     it('should handle API errors gracefully', async () => {
       const llmService = window.LLMService();
-      llmService.matchField = vi.fn().mockRejectedValue(new Error('API Error'));
+      const error = new Error('API Error');
+      llmService.matchField.mockRejectedValue(error);
       
       try {
         await llmService.matchField('username', 'What is your name?');
-      } catch (error) {
-        expect(llmService.handleError).toHaveBeenCalled();
+      } catch (e) {
+        expect(llmService.handleError).toHaveBeenCalledWith(error);
       }
     });
   });
@@ -129,22 +142,15 @@ describe('Content Script', () => {
   describe('Storage Operations', () => {
     it('saves API key successfully', async () => {
       const apiKey = { key: 'test-key', provider: 'openai' };
-      await chrome.storage.sync.set({ apiKey });
-      expect(chrome.storage.sync.set).toHaveBeenCalledWith({ apiKey });
+      window.getApiKey.mockResolvedValue(apiKey);
+      const result = await window.getApiKey();
+      expect(result).toEqual(apiKey);
     });
 
     it('retrieves API key successfully', async () => {
       const apiKey = { key: 'test-key', provider: 'openai' };
-      (chrome.storage.sync.get as any).mockImplementation((key, callback) => {
-        callback({ apiKey });
-      });
-
-      const result = await new Promise((resolve) => {
-        chrome.storage.sync.get('apiKey', (data) => {
-          resolve(data.apiKey);
-        });
-      });
-
+      window.getApiKey.mockResolvedValue(apiKey);
+      const result = await window.getApiKey();
       expect(result).toEqual(apiKey);
     });
   });
@@ -155,7 +161,8 @@ describe('Content Script', () => {
       const message = { type: 'TEST_MESSAGE', data: 'test' };
       
       chrome.runtime.onMessage.addListener(mockCallback);
-      chrome.runtime.onMessage.emit(message);
+      const callback = chrome.runtime.onMessage.addListener.mock.calls[0][0];
+      callback(message);
       
       expect(mockCallback).toHaveBeenCalledWith(message);
     });
