@@ -1,4 +1,5 @@
 /// <reference types="chrome"/>
+/// <reference path="../../types/global.d.ts"/>
 
 import type { LLMProvider, LLMService } from '../../types/global';
 
