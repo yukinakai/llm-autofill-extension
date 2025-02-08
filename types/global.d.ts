@@ -1,12 +1,14 @@
-declare type LLMProvider = 'openai' | 'claude';
-
-declare interface ApiKey {
-  key: string;
-  provider: LLMProvider;
-  timestamp?: string;
-}
+export {};
 
 declare global {
+  type LLMProvider = 'openai' | 'claude';
+
+  interface ApiKey {
+    key: string;
+    provider: LLMProvider;
+    timestamp?: string;
+  }
+
   interface Window {
     detectForms: () => { name: string; type: string; label?: string }[];
     findLabel: (input: HTMLInputElement) => string | undefined;
