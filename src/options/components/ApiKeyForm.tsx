@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Paper,
   TextField,
@@ -9,12 +9,15 @@ import {
   MenuItem,
   Typography,
   IconButton,
+  Alert,
+  SelectChangeEvent,
 } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
+import { saveApiKey, loadApiKey, deleteApiKey } from '../../utils/storage';
 
-type LLMProvider = 'openai' | 'gemini' | 'claude';
+type LLMProvider = 'openai' | 'anthropic';
 
-interface ApiKey {
+export interface ApiKey {
   provider: LLMProvider;
   key: string;
   timestamp: string;
@@ -29,6 +32,36 @@ const ApiKeyForm: React.FC<ApiKeyFormProps> = ({ onSubmit }) => {
   const [apiKey, setApiKey] = useState('');
   const [error, setError] = useState('');
   const [savedApiKey, setSavedApiKey] = useState<ApiKey | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const loadSavedApiKey = async () => {
+      try {
+        const key = await loadApiKey();
+        if (isMounted) {
+          setSavedApiKey(key);
+          if (key) {
+            onSubmit(key);
+          }
+          setIsLoading(false);
+        }
+      } catch (error) {
+        if (isMounted) {
+          console.error('APIキーの読み込みに失敗しました:', error);
+          setError('APIキーの読み込みに失敗しました');
+          setIsLoading(false);
+        }
+      }
+    };
+
+    loadSavedApiKey();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [onSubmit]);
 
   const validateApiKey = (key: string, provider: LLMProvider): boolean => {
     if (!key) {
@@ -43,15 +76,9 @@ const ApiKeyForm: React.FC<ApiKeyFormProps> = ({ onSubmit }) => {
           return false;
         }
         break;
-      case 'gemini':
-        if (!key.startsWith('AIzaSy')) {
-          setError('GeminiのAPIキーは"AIzaSy"で始まる必要があります');
-          return false;
-        }
-        break;
-      case 'claude':
+      case 'anthropic':
         if (!key.startsWith('sk-ant-')) {
-          setError('ClaudeのAPIキーは"sk-ant-"で始まる必要があります');
+          setError('AnthropicのAPIキーは"sk-ant-"で始まる必要があります');
           return false;
         }
         break;
@@ -60,29 +87,66 @@ const ApiKeyForm: React.FC<ApiKeyFormProps> = ({ onSubmit }) => {
     return true;
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError('');
+
     if (validateApiKey(apiKey, selectedProvider)) {
-      const newApiKey: ApiKey = {
-        provider: selectedProvider,
-        key: apiKey,
-        timestamp: new Date().toLocaleString('ja-JP'),
-      };
-      setSavedApiKey(newApiKey);
-      onSubmit(newApiKey);
-      setApiKey('');
-      setError('');
+      try {
+        const newApiKey: ApiKey = {
+          provider: selectedProvider,
+          key: apiKey,
+          timestamp: new Date().toLocaleString('ja-JP'),
+        };
+        await saveApiKey(newApiKey);
+        setSavedApiKey(newApiKey);
+        onSubmit(newApiKey);
+        setApiKey('');
+      } catch (error) {
+        console.error('APIキーの保存に失敗しました:', error);
+        setError('APIキーの保存に失敗しました');
+      }
     }
   };
 
-  const handleDelete = () => {
-    setSavedApiKey(null);
-    onSubmit(null);
+  const handleDelete = async () => {
+    try {
+      await deleteApiKey();
+      setSavedApiKey(null);
+      onSubmit(null);
+    } catch (error) {
+      console.error('APIキーの削除に失敗しました:', error);
+      setError('APIキーの削除に失敗しました');
+    }
   };
+
+  const handleProviderChange = (event: SelectChangeEvent<LLMProvider>) => {
+    setSelectedProvider(event.target.value as LLMProvider);
+  };
+
+  const handleApiKeyChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setApiKey(e.target.value);
+    setError('');
+  };
+
+  if (isLoading) {
+    return (
+      <Paper className="p-4">
+        <div className="text-center p-4">
+          <Typography>読み込み中...</Typography>
+        </div>
+      </Paper>
+    );
+  }
 
   return (
     <Paper className="p-4">
-      <form onSubmit={handleSubmit} aria-label="api-key-form" className="space-y-4">
+      {error && (
+        <Alert severity="error" className="mb-4" data-testid="error-alert">
+          {error}
+        </Alert>
+      )}
+      <form aria-label="api-key-form" className="space-y-4" onSubmit={handleSubmit}>
         {savedApiKey ? (
           <div className="mb-4 p-4 bg-gray-50 rounded">
             <div className="flex items-center justify-between">
@@ -91,7 +155,7 @@ const ApiKeyForm: React.FC<ApiKeyFormProps> = ({ onSubmit }) => {
                   登録済みのAPIキー
                 </Typography>
                 <Typography variant="body2" color="textSecondary">
-                  プロバイダー: {savedApiKey.provider === 'openai' ? 'OpenAI' : savedApiKey.provider === 'gemini' ? 'Gemini' : 'Claude'}
+                  プロバイダー: {savedApiKey.provider === 'openai' ? 'OpenAI' : 'Anthropic'}
                 </Typography>
                 <Typography variant="body2" color="textSecondary">
                   登録日時: {savedApiKey.timestamp}
@@ -105,31 +169,31 @@ const ApiKeyForm: React.FC<ApiKeyFormProps> = ({ onSubmit }) => {
         ) : (
           <>
             <FormControl fullWidth>
-              <InputLabel id="llm-provider-label" htmlFor="llm-provider-select">LLMプロバイダー</InputLabel>
+              <InputLabel id="llm-provider-label">LLMプロバイダー</InputLabel>
               <Select
-                id="llm-provider-select"
                 labelId="llm-provider-label"
+                id="llm-provider-select"
                 value={selectedProvider}
-                onChange={(e) => setSelectedProvider(e.target.value as LLMProvider)}
                 label="LLMプロバイダー"
+                onChange={handleProviderChange}
+                aria-label="LLMプロバイダー"
               >
                 <MenuItem value="openai">OpenAI</MenuItem>
-                <MenuItem value="gemini">Gemini</MenuItem>
-                <MenuItem value="claude">Claude</MenuItem>
+                <MenuItem value="anthropic">Anthropic</MenuItem>
               </Select>
             </FormControl>
 
             <TextField
               fullWidth
+              label={`${selectedProvider === 'openai' ? 'OpenAI' : 'Anthropic'} APIキー`}
               type="password"
-              label={`${selectedProvider === 'openai' ? 'OpenAI' : selectedProvider === 'gemini' ? 'Gemini' : 'Claude'} APIキー`}
               value={apiKey}
-              onChange={(e) => {
-                setApiKey(e.target.value);
-                setError('');
-              }}
+              onChange={handleApiKeyChange}
               error={!!error}
-              helperText={error}
+              inputProps={{
+                'aria-label': `${selectedProvider === 'openai' ? 'OpenAI' : 'Anthropic'} APIキー`,
+                role: 'textbox'
+              }}
             />
 
             <div className="flex justify-end">
