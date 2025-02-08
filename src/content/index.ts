@@ -1,6 +1,8 @@
 /// <reference types="chrome"/>
 /// <reference path="../../types/global.d.ts"/>
 
+type LLMProvider = 'openai' | 'claude';
+
 export {};
 
 (function() {
