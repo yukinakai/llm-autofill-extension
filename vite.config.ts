@@ -2,11 +2,25 @@ import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import { resolve } from 'path';
 import { fileURLToPath } from 'url';
+import fs from 'fs';
 
 const __dirname = fileURLToPath(new URL('.', import.meta.url));
 
+// マニフェストをコピーするプラグイン
+const copyManifest = () => {
+  return {
+    name: 'copy-manifest',
+    writeBundle: () => {
+      fs.copyFileSync(
+        resolve(__dirname, 'manifest.json'),
+        resolve(__dirname, 'dist/manifest.json')
+      );
+    },
+  };
+};
+
 export default defineConfig({
-  plugins: [react()],
+  plugins: [react(), copyManifest()],
   resolve: {
     alias: {
       '@': resolve(__dirname, './src'),
