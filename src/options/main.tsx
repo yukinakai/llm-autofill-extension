@@ -1,11 +1,13 @@
 import React from 'react';
-import ReactDOM from 'react-dom/client';
+import * as ReactDOM from 'react-dom/client';
 import './index.css';
+import ProfileRegistration from './components/ProfileRegistration';
 
 const App = () => {
   return (
-    <div className="p-4">
-      <h1 className="text-xl font-bold">LLM Autofill - Options</h1>
+    <div className="container mx-auto p-8">
+      <h1 className="text-2xl font-bold mb-8">LLM Autofill - プロフィール設定</h1>
+      <ProfileRegistration />
     </div>
   );
 };

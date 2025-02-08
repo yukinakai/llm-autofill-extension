@@ -19,7 +19,9 @@
     "paths": {
       "@/*": ["src/*"]
     },
-    "types": ["chrome"]
+    "allowSyntheticDefaultImports": true,
+    "esModuleInterop": true,
+    "types": ["chrome", "jest", "@testing-library/jest-dom"]
   },
   "include": ["src"],
   "references": [{ "path": "./tsconfig.node.json" }]
