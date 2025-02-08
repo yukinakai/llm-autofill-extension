@@ -10,6 +10,8 @@ export default defineConfig({
     },
   },
   build: {
+    outDir: 'dist',
+    emptyOutDir: true,
     rollupOptions: {
       input: {
         popup: resolve(__dirname, 'src/popup/index.html'),
@@ -18,9 +20,9 @@ export default defineConfig({
         content: resolve(__dirname, 'src/content/index.ts'),
       },
       output: {
-        entryFileNames: '[name]/index.js',
-        chunkFileNames: '[name]/[hash].js',
-        assetFileNames: '[name]/[hash][extname]',
+        entryFileNames: 'src/[name]/index.js',
+        chunkFileNames: 'assets/[name].[hash].js',
+        assetFileNames: 'assets/[name].[hash][extname]',
       },
     },
   },
