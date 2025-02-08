@@ -1,5 +1,5 @@
 interface Window {
-  getApiKey: () => Promise<string | null>;
-  getProfile: () => Promise<{ name: string } | null>;
+  getApiKey: () => Promise<{ key: string; type: string; } | null>;
+  getProfile: () => Promise<Record<string, string> | null>;
   autofillForms: () => Promise<void>;
 }
