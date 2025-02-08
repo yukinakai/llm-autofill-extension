@@ -81,15 +81,12 @@ export {};
     });
   }
 
-  // LLMサービス
+  // LLMサービスの実装
   class LLMServiceImpl implements LLMService {
-    private apiKey: string;
-    private provider: LLMProvider;
-
-    constructor(apiKey: string, provider: LLMProvider) {
-      this.apiKey = apiKey;
-      this.provider = provider;
-    }
+    constructor(
+      public readonly apiKey: string,
+      public readonly provider: LLMProvider
+    ) {}
 
     async matchFieldWithProfile(
       field: { name: string; type: string; label?: string },
@@ -111,7 +108,7 @@ ${field.label ? `ラベル: ${field.label}` : ''}
       }
     }
 
-    async callClaudeAPI(prompt: string): Promise<string> {
+    private async callClaudeAPI(prompt: string): Promise<string> {
       if (this.provider !== 'claude') {
         throw new Error("Unsupported LLM provider");
       }
@@ -135,8 +132,7 @@ ${field.label ? `ラベル: ${field.label}` : ''}
           throw new Error(`API request failed: ${response.statusText}`);
         }
 
-        const data = await response.json();
-        return data.content;
+        return (await response.json()).content;
       } catch (error) {
         console.error('API呼び出しに失敗しました:', error);
         throw error;
