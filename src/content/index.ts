@@ -123,7 +123,7 @@ ${field.label ? `ラベル: ${field.label}` : ''}
 
 上記のフォームフィールドに対して、プロフィールから最適な値を選択してください。`;
 
-        const response = await this.callAnthropicAPI(prompt);
+        const response = await this.callClaudeAPI(prompt);
         return response.trim();
       } catch (error) {
         console.error('フィールドのマッチングに失敗しました:', error);
@@ -131,21 +131,21 @@ ${field.label ? `ラベル: ${field.label}` : ''}
       }
     }
 
-    async callAnthropicAPI(prompt: string): Promise<string> {
-      if (this.provider !== 'anthropic') {
-        throw new Error('Unsupported LLM provider');
+    async callClaudeAPI(prompt: string): Promise<string> {
+      if (this.provider !== 'claude') {
+        throw new Error("Unsupported LLM provider");
       }
 
       try {
-        const response = await fetch('https://api.anthropic.com/v1/messages', {
+        const response = await fetch('https://api.claude.ai/v1/messages', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
             'x-api-key': this.apiKey,
-            'anthropic-version': '2023-06-01'
+            'claude-version': '2023-06-01'
           },
           body: JSON.stringify({
-            model: 'claude-2',
+            model: 'claude',
             max_tokens: 1000,
             messages: [{ role: 'user', content: prompt }]
           })
