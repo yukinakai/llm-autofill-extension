@@ -30,7 +30,7 @@ const ProfileList: React.FC<ProfileListProps> = ({ profiles, onEdit, onDelete })
 
   return (
     <div className="space-y-6">
-      {profiles.map(profile => (
+      {profiles.map((profile: Profile) => (
         <div key={profile.id} className="border rounded-lg p-4">
           {editingId === profile.id ? (
             <div className="space-y-4">

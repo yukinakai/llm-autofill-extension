@@ -19,6 +19,8 @@
     "paths": {
       "@/*": ["src/*"]
     },
+    "allowSyntheticDefaultImports": true,
+    "esModuleInterop": true,
     "types": ["chrome"]
   },
   "include": ["src"],
