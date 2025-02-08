@@ -6,54 +6,84 @@ import '@testing-library/jest-dom';
 import ApiKeyForm from '../ApiKeyForm';
 
 describe('ApiKeyForm', () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2025-02-08T19:40:00'));
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   it('renders API key input fields', () => {
-    render(<ApiKeyForm />);
+    render(<ApiKeyForm onSubmit={() => {}} />);
     
-    expect(screen.getByLabelText(/OpenAI API Key/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/Gemini API Key/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/Claude API Key/i)).toBeInTheDocument();
+    // プルダウンメニューの確認
+    expect(screen.getByLabelText(/LLMプロバイダー/i)).toBeInTheDocument();
+    // APIキー入力フィールドの確認
+    expect(screen.getByLabelText(/OpenAI APIキー/i)).toBeInTheDocument();
   });
 
   it('handles API key input changes', () => {
-    render(<ApiKeyForm />);
+    render(<ApiKeyForm onSubmit={() => {}} />);
     
-    const openAiInput = screen.getByLabelText(/OpenAI API Key/i);
-    fireEvent.change(openAiInput, { target: { value: 'test-openai-key' } });
-    expect(openAiInput).toHaveValue('test-openai-key');
+    const input = screen.getByLabelText(/OpenAI APIキー/i);
+    fireEvent.change(input, { target: { value: 'sk-test-key' } });
+    
+    expect(input).toHaveValue('sk-test-key');
   });
 
   it('displays validation error for invalid API key format', () => {
-    render(<ApiKeyForm />);
+    render(<ApiKeyForm onSubmit={() => {}} />);
     
-    const openAiInput = screen.getByLabelText(/OpenAI API Key/i);
-    fireEvent.change(openAiInput, { target: { value: 'invalid-key' } });
-    fireEvent.blur(openAiInput);
+    const input = screen.getByLabelText(/OpenAI APIキー/i);
+    fireEvent.change(input, { target: { value: 'invalid-key' } });
     
-    expect(screen.getByText('無効なAPIキーの形式です')).toBeInTheDocument();
+    const submitButton = screen.getByText('保存');
+    fireEvent.click(submitButton);
+    
+    expect(screen.getByText(/OpenAIのAPIキーは"sk-"で始まる必要があります/i)).toBeInTheDocument();
   });
 
-  it('handles form submission', async () => {
-    const onSubmit = vi.fn();
-    const { debug } = render(<ApiKeyForm onSubmit={onSubmit} />);
+  it('handles form submission with valid API key', () => {
+    const mockOnSubmit = vi.fn();
+    render(<ApiKeyForm onSubmit={mockOnSubmit} />);
     
-    // 入力値を設定
-    const openAiInput = screen.getByLabelText(/OpenAI API Key/i);
-    fireEvent.change(openAiInput, { target: { value: 'sk-validopenaiapikey' } });
+    const input = screen.getByLabelText(/OpenAI APIキー/i);
+    fireEvent.change(input, { target: { value: 'sk-test-key' } });
     
-    // フォームを取得して送信
-    const form = screen.getByRole('form', { name: 'api-key-form' });
+    const submitButton = screen.getByText('保存');
+    fireEvent.click(submitButton);
     
-    // デバッグ情報を出力
-    console.log('Form element:', form);
-    console.log('OpenAI input value:', (openAiInput as HTMLInputElement).value);
-    
-    fireEvent.submit(form);
-    
-    // 期待される引数でonSubmitが呼ばれることを確認
-    expect(onSubmit).toHaveBeenCalledWith({
-      openAiKey: 'sk-validopenaiapikey',
-      geminiKey: '',
-      claudeKey: ''
+    expect(mockOnSubmit).toHaveBeenCalledWith({
+      provider: 'openai',
+      key: 'sk-test-key',
+      timestamp: '2025/2/8 19:40:00'
     });
+  });
+
+  it('shows saved API key with timestamp and allows deletion', async () => {
+    const mockOnSubmit = vi.fn();
+    render(<ApiKeyForm onSubmit={mockOnSubmit} />);
+    
+    // APIキーを保存
+    const input = screen.getByLabelText(/OpenAI APIキー/i);
+    fireEvent.change(input, { target: { value: 'sk-test-key' } });
+    
+    const submitButton = screen.getByText('保存');
+    fireEvent.click(submitButton);
+    
+    // 保存済みのAPIキー情報が表示されることを確認
+    expect(screen.getByText('登録済みのAPIキー')).toBeInTheDocument();
+    expect(screen.getByText(/プロバイダー: OpenAI/i)).toBeInTheDocument();
+    expect(screen.getByText(/登録日時: 2025\/2\/8 19:40:00/i)).toBeInTheDocument();
+    
+    // 削除ボタンをクリック
+    const deleteButton = screen.getByLabelText('APIキーを削除');
+    fireEvent.click(deleteButton);
+    
+    // 削除後にフォームが再表示されることを確認
+    expect(screen.getByLabelText(/OpenAI APIキー/i)).toBeInTheDocument();
+    expect(mockOnSubmit).toHaveBeenLastCalledWith(null);
   });
 });
