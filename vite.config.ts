@@ -6,21 +6,39 @@ import fs from 'fs';
 
 const __dirname = fileURLToPath(new URL('.', import.meta.url));
 
-// マニフェストをコピーするプラグイン
-const copyManifest = () => {
+// アセットをコピーするプラグイン
+const copyAssets = () => {
   return {
-    name: 'copy-manifest',
+    name: 'copy-assets',
     writeBundle: () => {
+      // manifest.jsonをコピー
       fs.copyFileSync(
         resolve(__dirname, 'manifest.json'),
         resolve(__dirname, 'dist/manifest.json')
       );
+
+      // assetsディレクトリをコピー
+      const srcAssetsDir = resolve(__dirname, 'src/assets');
+      const distAssetsDir = resolve(__dirname, 'dist/assets');
+
+      if (!fs.existsSync(distAssetsDir)) {
+        fs.mkdirSync(distAssetsDir, { recursive: true });
+      }
+
+      if (fs.existsSync(srcAssetsDir)) {
+        fs.readdirSync(srcAssetsDir).forEach(file => {
+          fs.copyFileSync(
+            resolve(srcAssetsDir, file),
+            resolve(distAssetsDir, file)
+          );
+        });
+      }
     },
   };
 };
 
 export default defineConfig({
-  plugins: [react(), copyManifest()],
+  plugins: [react(), copyAssets()],
   resolve: {
     alias: {
       '@': resolve(__dirname, './src'),

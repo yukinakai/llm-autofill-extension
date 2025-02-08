@@ -28,13 +28,17 @@ const ProfileForm: React.FC<ProfileFormProps> = ({ initialFields = [], onSave })
     setFields(newFields);
   };
 
+  const resetForm = () => {
+    setFields([{ name: '', value: '' }]);
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const validFields = fields.filter(field => field.name && field.value);
     if (validFields.length > 0) {
       onSave(validFields);
-      if (!initialFields) {
-        setFields([{ name: '', value: '' }]);
+      if (initialFields?.length === 0 || !initialFields) {
+        resetForm();
       }
     }
   };
@@ -65,6 +69,7 @@ const ProfileForm: React.FC<ProfileFormProps> = ({ initialFields = [], onSave })
             type="button"
             onClick={() => handleRemoveField(index)}
             className="px-3 py-2 text-red-600 hover:text-red-800"
+            disabled={fields.length === 1}
           >
             削除
           </button>
