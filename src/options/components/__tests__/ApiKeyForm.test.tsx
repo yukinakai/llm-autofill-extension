@@ -27,8 +27,8 @@ describe('ApiKeyForm', () => {
       <ApiKeyForm />
     );
 
-    expect(screen.getByRole('textbox', { name: /OpenAI APIキー/i })).toBeInTheDocument();
-    expect(screen.getByRole('combobox', { name: /LLMプロバイダー/i })).toBeInTheDocument();
+    expect(screen.getByLabelText(/OpenAI APIキー/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/LLMプロバイダー/i)).toBeInTheDocument();
   });
 
   it('handles API key input changes', () => {
@@ -36,7 +36,7 @@ describe('ApiKeyForm', () => {
       <ApiKeyForm />
     );
 
-    const input = screen.getByRole('textbox', { name: /OpenAI APIキー/i });
+    const input = screen.getByLabelText(/OpenAI APIキー/i);
     fireEvent.change(input, { target: { value: 'test-api-key' } });
     expect(input).toHaveValue('test-api-key');
   });
@@ -46,7 +46,7 @@ describe('ApiKeyForm', () => {
       <ApiKeyForm />
     );
 
-    const input = screen.getByRole('textbox', { name: /OpenAI APIキー/i });
+    const input = screen.getByLabelText(/OpenAI APIキー/i);
     const submitButton = screen.getByRole('button', { name: /保存/i });
 
     fireEvent.change(input, { target: { value: 'invalid-key' } });
@@ -56,14 +56,14 @@ describe('ApiKeyForm', () => {
   });
 
   it('handles form submission with valid API key', async () => {
-    const mockSaveApiKey = jest.fn();
-    (storage.saveApiKey as jest.Mock).mockImplementation(mockSaveApiKey);
+    const mockSaveApiKey = vi.fn();
+    (storage.saveApiKey as any).mockImplementation(mockSaveApiKey);
 
     render(
       <ApiKeyForm />
     );
 
-    const input = screen.getByRole('textbox', { name: /OpenAI APIキー/i });
+    const input = screen.getByLabelText(/OpenAI APIキー/i);
     const submitButton = screen.getByRole('button', { name: /保存/i });
 
     fireEvent.change(input, { target: { value: 'sk-validapikey123' } });
@@ -75,11 +75,11 @@ describe('ApiKeyForm', () => {
   });
 
   it('shows saved API key with timestamp and allows deletion', async () => {
-    const mockGetApiKey = jest.fn().mockResolvedValue({
+    const mockGetApiKey = vi.fn().mockResolvedValue({
       key: 'sk-existingkey123',
       timestamp: new Date().toISOString()
     });
-    (storage.getApiKey as jest.Mock).mockImplementation(mockGetApiKey);
+    (storage.getApiKey as any).mockImplementation(mockGetApiKey);
 
     render(
       <ApiKeyForm />
@@ -91,8 +91,8 @@ describe('ApiKeyForm', () => {
   });
 
   it('shows loading state while fetching API key', () => {
-    const mockGetApiKey = jest.fn().mockImplementation(() => new Promise(() => {}));
-    (storage.getApiKey as jest.Mock).mockImplementation(mockGetApiKey);
+    const mockGetApiKey = vi.fn().mockImplementation(() => new Promise(() => {}));
+    (storage.getApiKey as any).mockImplementation(mockGetApiKey);
 
     render(
       <ApiKeyForm />
@@ -102,14 +102,14 @@ describe('ApiKeyForm', () => {
   });
 
   it('handles API key save error', async () => {
-    const mockSaveApiKey = jest.fn().mockRejectedValue(new Error('Storage error'));
-    (storage.saveApiKey as jest.Mock).mockImplementation(mockSaveApiKey);
+    const mockSaveApiKey = vi.fn().mockRejectedValue(new Error('Storage error'));
+    (storage.saveApiKey as any).mockImplementation(mockSaveApiKey);
 
     render(
       <ApiKeyForm />
     );
 
-    const input = screen.getByRole('textbox', { name: /OpenAI APIキー/i });
+    const input = screen.getByLabelText(/OpenAI APIキー/i);
     const submitButton = screen.getByRole('button', { name: /保存/i });
 
     fireEvent.change(input, { target: { value: 'sk-validapikey123' } });
@@ -121,13 +121,13 @@ describe('ApiKeyForm', () => {
   });
 
   it('handles API key delete error', async () => {
-    const mockGetApiKey = jest.fn().mockResolvedValue({
+    const mockGetApiKey = vi.fn().mockResolvedValue({
       key: 'sk-existingkey123',
       timestamp: new Date().toISOString()
     });
-    const mockDeleteApiKey = jest.fn().mockRejectedValue(new Error('Storage error'));
-    (storage.getApiKey as jest.Mock).mockImplementation(mockGetApiKey);
-    (storage.deleteApiKey as jest.Mock).mockImplementation(mockDeleteApiKey);
+    const mockDeleteApiKey = vi.fn().mockRejectedValue(new Error('Storage error'));
+    (storage.getApiKey as any).mockImplementation(mockGetApiKey);
+    (storage.deleteApiKey as any).mockImplementation(mockDeleteApiKey);
 
     render(
       <ApiKeyForm />
