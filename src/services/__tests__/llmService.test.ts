@@ -1,81 +1,180 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { LLMService } from '../llmService';
-import { FormField } from '../../content/formDetector';
 import OpenAI from 'openai';
 
-// OpenAIのモックを作成
-const mockCreate = vi.fn();
+// OpenAIのモック
 vi.mock('openai', () => {
   return {
-    default: vi.fn().mockImplementation(() => ({
-      chat: {
+    default: class MockOpenAI {
+      chat = {
         completions: {
-          create: mockCreate
+          create: vi.fn()
         }
+      };
+
+      constructor() {
+        return this;
       }
-    }))
+    }
   };
 });
 
 describe('LLMService', () => {
-  const mockFormField: FormField = {
-    name: 'firstName',
-    type: 'text',
-    placeholder: 'First Name'
-  };
-
-  const mockProfile = {
-    firstName: 'John',
-    lastName: 'Doe',
-    email: 'john@example.com'
-  };
+  let llmService: LLMService;
+  let mockOpenAI: any;
+  const mockApiKey = 'test-api-key';
 
   beforeEach(() => {
-    mockCreate.mockClear();
+    vi.clearAllMocks();
+    mockOpenAI = new OpenAI({ apiKey: mockApiKey });
+    vi.spyOn(mockOpenAI.chat.completions, 'create');
+    // @ts-ignore
+    llmService = new LLMService(mockApiKey, mockOpenAI);
   });
 
-  it('should match form fields with profile data', async () => {
-    mockCreate.mockResolvedValueOnce({
-      choices: [{
-        message: {
-          content: JSON.stringify({
-            value: 'John',
-            confidence: 0.9
-          })
-        }
-      }]
-    });
-
-    const llmService = new LLMService('mock-api-key');
-    const result = await llmService.matchFieldWithProfile(mockFormField, mockProfile);
-    
-    expect(result).toEqual({
-      field: mockFormField,
-      value: 'John',
-      confidence: expect.any(Number)
-    });
+  afterEach(() => {
+    vi.resetAllMocks();
   });
 
-  it('should handle fields with no matching profile data', async () => {
-    mockCreate.mockResolvedValueOnce({
-      choices: [{
-        message: {
-          content: JSON.stringify({
-            value: null,
-            confidence: 0
-          })
-        }
-      }]
-    });
-
-    const llmService = new LLMService('mock-api-key');
-    const unknownField: FormField = {
-      name: 'unknownField',
+  describe('matchFieldWithProfile', () => {
+    const mockField = {
+      name: 'fullName',
       type: 'text',
-      placeholder: 'Unknown'
+      label: '氏名',
+      placeholder: '山田太郎',
+      id: 'name-field',
+      className: 'form-control'
     };
 
-    const result = await llmService.matchFieldWithProfile(unknownField, mockProfile);
-    expect(result.value).toBeNull();
+    const mockProfile = {
+      name: '山田太郎',
+      email: 'test@example.com',
+      phone: '090-1234-5678'
+    };
+
+    it('should return correct match with high confidence for exact label match', async () => {
+      const mockCompletion = {
+        choices: [{
+          message: {
+            content: JSON.stringify({
+              value: '山田太郎',
+              confidence: 1.0
+            })
+          }
+        }]
+      };
+
+      mockOpenAI.chat.completions.create.mockResolvedValueOnce(mockCompletion);
+
+      const result = await llmService.matchFieldWithProfile(mockField, mockProfile);
+      expect(result).toEqual({
+        field: mockField,
+        value: '山田太郎',
+        confidence: 1.0
+      });
+      expect(mockOpenAI.chat.completions.create).toHaveBeenCalledTimes(1);
+    });
+
+    it('should handle empty response from LLM', async () => {
+      const mockCompletion = {
+        choices: [{
+          message: {
+            content: null
+          }
+        }]
+      };
+
+      mockOpenAI.chat.completions.create.mockResolvedValueOnce(mockCompletion);
+
+      const result = await llmService.matchFieldWithProfile(mockField, mockProfile);
+      expect(result).toEqual({
+        field: mockField,
+        value: null,
+        confidence: 0
+      });
+      expect(mockOpenAI.chat.completions.create).toHaveBeenCalledTimes(1);
+    });
+
+    it('should handle invalid JSON response', async () => {
+      const mockCompletion = {
+        choices: [{
+          message: {
+            content: 'invalid json'
+          }
+        }]
+      };
+
+      mockOpenAI.chat.completions.create.mockResolvedValueOnce(mockCompletion);
+
+      const result = await llmService.matchFieldWithProfile(mockField, mockProfile);
+      expect(result).toEqual({
+        field: mockField,
+        value: null,
+        confidence: 0
+      });
+      expect(mockOpenAI.chat.completions.create).toHaveBeenCalledTimes(1);
+    });
+
+    it('should handle API errors and retry', async () => {
+      const mockError = new Error('API Error');
+      const mockCompletion = {
+        choices: [{
+          message: {
+            content: JSON.stringify({
+              value: '山田太郎',
+              confidence: 0.8
+            })
+          }
+        }]
+      };
+
+      mockOpenAI.chat.completions.create
+        .mockRejectedValueOnce(mockError)
+        .mockResolvedValueOnce(mockCompletion);
+
+      const result = await llmService.matchFieldWithProfile(mockField, mockProfile);
+      expect(mockOpenAI.chat.completions.create).toHaveBeenCalledTimes(2);
+      expect(result).toEqual({
+        field: mockField,
+        value: '山田太郎',
+        confidence: 0.8
+      });
+    });
+
+    it('should handle maximum retries exceeded', async () => {
+      const mockError = new Error('API Error');
+      mockOpenAI.chat.completions.create.mockRejectedValue(mockError);
+
+      const result = await llmService.matchFieldWithProfile(mockField, mockProfile);
+      expect(mockOpenAI.chat.completions.create).toHaveBeenCalledTimes(3); // maxRetries = 3
+      expect(result).toEqual({
+        field: mockField,
+        value: null,
+        confidence: 0
+      });
+    });
+
+    it('should validate response format', async () => {
+      const mockCompletion = {
+        choices: [{
+          message: {
+            content: JSON.stringify({
+              value: '山田太郎',
+              confidence: 1.5 // Invalid confidence value > 1
+            })
+          }
+        }]
+      };
+
+      mockOpenAI.chat.completions.create.mockResolvedValueOnce(mockCompletion);
+
+      const result = await llmService.matchFieldWithProfile(mockField, mockProfile);
+      expect(result).toEqual({
+        field: mockField,
+        value: null,
+        confidence: 0
+      });
+      expect(mockOpenAI.chat.completions.create).toHaveBeenCalledTimes(1);
+    });
   });
 });

@@ -51,7 +51,6 @@ export class LLMService {
             }
           ],
           temperature: 0.3,
-          timeout: 10000, // 10秒でタイムアウト
         });
 
         if (!completion?.choices?.[0]?.message?.content) {
