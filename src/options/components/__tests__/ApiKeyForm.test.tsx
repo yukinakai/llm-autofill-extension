@@ -38,27 +38,9 @@ describe('ApiKeyForm', () => {
       expect(screen.queryByText(/読み込み中/i)).not.toBeInTheDocument();
     });
 
-    const input = screen.getByLabelText(/OpenAI APIキー/i);
+    const input = screen.getByLabelText(/Claude APIキー/i);
     await userEvent.type(input, 'test-api-key');
     expect(input).toHaveValue('test-api-key');
-  });
-
-  it('displays validation error for invalid API key format', async () => {
-    render(<ApiKeyForm />);
-
-    await waitFor(() => {
-      expect(screen.queryByText(/読み込み中/i)).not.toBeInTheDocument();
-    });
-
-    const input = screen.getByLabelText(/OpenAI APIキー/i);
-    const submitButton = screen.getByRole('button', { name: /保存/i });
-
-    await userEvent.type(input, 'invalid-key');
-    await userEvent.click(submitButton);
-
-    await waitFor(() => {
-      expect(screen.getAllByText(/APIキーの形式が正しくありません/i)).toHaveLength(2);
-    });
   });
 
   it('handles form submission with valid API key', async () => {
@@ -71,16 +53,16 @@ describe('ApiKeyForm', () => {
       expect(screen.queryByText(/読み込み中/i)).not.toBeInTheDocument();
     });
 
-    const input = screen.getByLabelText(/OpenAI APIキー/i);
+    const input = screen.getByLabelText(/Claude APIキー/i);
     const submitButton = screen.getByRole('button', { name: /保存/i });
 
-    await userEvent.type(input, 'sk-test-valid-key');
+    await userEvent.type(input, 'test-valid-key');
     await userEvent.click(submitButton);
 
     await waitFor(() => {
       expect(mockSaveApiKey).toHaveBeenCalledWith({
-        key: 'sk-test-valid-key',
-        provider: 'openai',
+        key: 'test-valid-key',
+        provider: 'claude',
         timestamp: expect.any(String)
       });
     });
@@ -91,8 +73,8 @@ describe('ApiKeyForm', () => {
     const mockDeleteApiKey = deleteApiKey as jest.Mock;
 
     mockGetApiKey.mockResolvedValueOnce({
-      key: 'sk-test-key',
-      provider: 'openai',
+      key: 'test-key',
+      provider: 'claude',
       timestamp: '2025-02-08T13:42:02.468Z'
     });
 
@@ -128,10 +110,10 @@ describe('ApiKeyForm', () => {
       expect(screen.queryByText(/読み込み中/i)).not.toBeInTheDocument();
     });
 
-    const input = screen.getByLabelText(/OpenAI APIキー/i);
+    const input = screen.getByLabelText(/Claude APIキー/i);
     const submitButton = screen.getByRole('button', { name: /保存/i });
 
-    await userEvent.type(input, 'sk-test-valid-key');
+    await userEvent.type(input, 'test-api-key');
     await userEvent.click(submitButton);
 
     await waitFor(() => {
@@ -144,8 +126,8 @@ describe('ApiKeyForm', () => {
     const mockDeleteApiKey = deleteApiKey as jest.Mock;
 
     mockGetApiKey.mockResolvedValueOnce({
-      key: 'sk-test-key',
-      provider: 'openai',
+      key: 'test-key',
+      provider: 'claude',
       timestamp: '2025-02-08T13:42:02.468Z'
     });
 

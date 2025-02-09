@@ -14,7 +14,7 @@ interface ApiKeyFormProps {
 
 const ApiKeyForm: React.FC<ApiKeyFormProps> = ({ onSubmit }) => {
   const [apiKey, setApiKey] = useState('');
-  const [provider, setProvider] = useState<'openai' | 'claude'>('openai');
+  const [provider, setProvider] = useState<'openai' | 'claude'>('claude');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [savedApiKey, setSavedApiKey] = useState<ApiKey | null>(null);
@@ -38,12 +38,6 @@ const ApiKeyForm: React.FC<ApiKeyFormProps> = ({ onSubmit }) => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
-
-    // APIキーの形式を検証
-    if (provider === 'openai' && !apiKey.startsWith('sk-')) {
-      setError('APIキーの形式が正しくありません');
-      return;
-    }
 
     try {
       await saveApiKey({
@@ -113,13 +107,13 @@ const ApiKeyForm: React.FC<ApiKeyFormProps> = ({ onSubmit }) => {
             onChange={handleProviderChange}
             data-testid="llm-provider-select"
           >
-            <MenuItem value="openai">OpenAI</MenuItem>
+            <MenuItem value="claude">Claude</MenuItem>
           </Select>
         </FormControl>
 
         <TextField
           fullWidth
-          label="OpenAI APIキー"
+          label="Claude APIキー"
           type="password"
           value={apiKey}
           onChange={handleApiKeyChange}
