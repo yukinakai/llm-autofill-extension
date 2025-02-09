@@ -1,4 +1,4 @@
-/// <reference types="../../types/global" />
+/// <reference types="../../../types/global" />
 /// <reference types="chrome" />
 
 import { vi, describe, it, expect, beforeEach, afterEach } from 'vitest';
@@ -153,7 +153,7 @@ describe('Content Script', () => {
       }));
 
       // インスタンスを作成
-      llmService = new window.LLMService('test-api-key', 'anthropic');
+      llmService = new window.LLMService('test-api-key', 'claude');
     });
 
     afterEach(() => {
@@ -191,7 +191,7 @@ describe('Content Script', () => {
       };
       window.LLMService = vi.fn().mockImplementation(() => mockLLMService);
 
-      const llmService = new window.LLMService('test-api-key', 'anthropic');
+      const llmService = new window.LLMService('test-api-key', 'claude');
       
       // エラーがスローされることを確認
       await expect(llmService.matchFieldWithProfile(field, profile)).rejects.toThrow('API Error');
