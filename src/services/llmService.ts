@@ -7,6 +7,11 @@ interface MatchResult {
   confidence: number;
 }
 
+interface LLMResponse {
+  value: string;
+  confidence: number;
+}
+
 export class LLMService {
   private openai: OpenAI;
 
@@ -60,7 +65,7 @@ export class LLMService {
       }
 
       try {
-        const result = JSON.parse(response);
+        const result: LLMResponse = JSON.parse(response);
         return {
           field,
           value: result.value,
@@ -88,14 +93,9 @@ export class LLMService {
   }
 }
 
-export async function getLLMSuggestion(profile: any, formField: { name: string; type: string; label: string }): Promise<string> {
+export async function getLLMSuggestion(profile: any, formField: FormField): Promise<string> {
   const llmService = new LLMService('');
-  const response = await llmService.matchFieldWithProfile({
-    name: formField.name,
-    type: formField.type,
-    label: formField.label,
-    placeholder: ''
-  }, profile);
+  const response = await llmService.matchFieldWithProfile(formField, profile);
 
   if (!response || !response.value) {
     return '';

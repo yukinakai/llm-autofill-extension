@@ -2,6 +2,7 @@ export interface FormField {
   name: string;
   type: string;
   placeholder?: string;
+  label: string;
   value?: string;
 }
 
@@ -15,6 +16,7 @@ export function detectForms(): FormField[] {
       name: input.name,
       type: input.type,
       placeholder: input.placeholder || undefined,
+      label: input.labels && input.labels.length > 0 ? input.labels[0].textContent || '' : '',
       value: input.value || undefined
     });
   });
