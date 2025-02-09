@@ -2,6 +2,11 @@
 /// <reference types="chrome" />
 
 import { vi, describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { getLLMSuggestion } from '../../services/llmService';
+
+vi.mock('../../services/llmService', () => ({
+  getLLMSuggestion: vi.fn()
+}));
 
 describe('Content Script', () => {
   beforeEach(() => {
@@ -199,6 +204,10 @@ describe('Content Script', () => {
   });
 
   describe('LLMの回答フォーマット', () => {
+    beforeEach(() => {
+      vi.clearAllMocks();
+    });
+
     it('プロフィール情報から適切な値を抽出して返すこと', async () => {
       const profile = {
         名前: 'テスト太郎'
@@ -209,9 +218,11 @@ describe('Content Script', () => {
         label: '氏名'
       };
 
+      (getLLMSuggestion as any).mockResolvedValueOnce('テスト太郎');
       const result = await getLLMSuggestion(profile, formField);
       
       expect(result).toBe('テスト太郎');
+      expect(getLLMSuggestion).toHaveBeenCalledWith(profile, formField);
     });
 
     it('プロフィールに情報がない場合は空文字を返すこと', async () => {
@@ -224,9 +235,11 @@ describe('Content Script', () => {
         label: '電話番号'
       };
 
+      (getLLMSuggestion as any).mockResolvedValueOnce('');
       const result = await getLLMSuggestion(profile, formField);
       
       expect(result).toBe('');
+      expect(getLLMSuggestion).toHaveBeenCalledWith(profile, formField);
     });
   });
 

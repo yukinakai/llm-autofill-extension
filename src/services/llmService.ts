@@ -87,3 +87,19 @@ export class LLMService {
     });
   }
 }
+
+export async function getLLMSuggestion(profile: any, formField: { name: string; type: string; label: string }): Promise<string> {
+  const llmService = new LLMService('');
+  const response = await llmService.matchFieldWithProfile({
+    name: formField.name,
+    type: formField.type,
+    label: formField.label,
+    placeholder: ''
+  }, profile);
+
+  if (!response || !response.value) {
+    return '';
+  }
+
+  return response.value.trim();
+}
