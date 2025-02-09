@@ -198,6 +198,38 @@ describe('Content Script', () => {
     });
   });
 
+  describe('LLMの回答フォーマット', () => {
+    it('プロフィール情報から適切な値を抽出して返すこと', async () => {
+      const profile = {
+        名前: 'テスト太郎'
+      };
+      const formField = {
+        name: 'name',
+        type: 'text',
+        label: '氏名'
+      };
+
+      const result = await getLLMSuggestion(profile, formField);
+      
+      expect(result).toBe('テスト太郎');
+    });
+
+    it('プロフィールに情報がない場合は空文字を返すこと', async () => {
+      const profile = {
+        名前: 'テスト太郎'
+      };
+      const formField = {
+        name: 'phoneNum',
+        type: 'tel',
+        label: '電話番号'
+      };
+
+      const result = await getLLMSuggestion(profile, formField);
+      
+      expect(result).toBe('');
+    });
+  });
+
   describe('Autofill Forms', () => {
     beforeEach(() => {
       // DOMをセットアップ
