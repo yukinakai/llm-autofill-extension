@@ -32,8 +32,8 @@ export async function autofillForms() {
     for (const field of fields) {
       try {
         const result = await llmService.matchFieldWithProfile(field, profile);
-        if (result.value && result.confidence > 0.7) {
-          // 確信度が70%以上の場合のみ自動入力
+        if (result.value && result.confidence > 0.9) {
+          // 確信度が90%以上の場合のみ自動入力
           const input = document.querySelector(`input[name="${field.name}"]`) as HTMLInputElement;
           if (input) {
             input.value = result.value;
