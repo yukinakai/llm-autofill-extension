@@ -66,7 +66,17 @@ export class LLMService {
         placeholder: field.placeholder
       },
       profile: profile,
-      instruction: "フォームフィールドとプロフィール情報を分析し、最適な値とその確信度を返してください。JSONフォーマットで { value: string | null, confidence: number } の形式で返してください。"
+      instruction: `
+フォームフィールドとプロフィール情報を厳密に分析してください。
+以下の条件を全て満たす場合のみ、値を返してください：
+1. フィールドの名前やプレースホルダーが、プロフィールの項目と明確に対応している
+2. プロフィールに該当する値が存在する
+3. その値がフィールドの型（type）と互換性がある
+
+条件を満たさない場合は、{ value: null, confidence: 0 } を返してください。
+条件を満たす場合は、{ value: string, confidence: number } の形式で返してください。
+confidenceは、マッチの確実性を0から1の間で表してください。
+`
     });
   }
 }
